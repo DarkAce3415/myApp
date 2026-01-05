@@ -48,7 +48,7 @@ export default function CreatorMainPage() {
           <div className="flex gap-4">
             <button
               onClick={() => router.push('/creator-main-page/account')}
-              className="px-6 py-2 border border-black rounded bg-black text-white font-semibold hover:opacity-90 transition"
+              className="px-6 py-2 border border-black rounded bg-black text-white font-semibold hover:opacity-90 transition hover:bg-white hover:text-black"
               aria-label="Open account page"
             >
               Open account
@@ -56,7 +56,7 @@ export default function CreatorMainPage() {
 
             <button
               onClick={() => router.push('/creator-main-page/upload')}
-              className="px-6 py-2 border border-black rounded bg-black text-white font-semibold hover:opacity-90 transition"
+              className="px-6 py-2 border border-black rounded bg-black text-white font-semibold hover:opacity-90 transition hover:bg-white hover:text-black"
               aria-label="Open upload page"
             >
               Upload Course
