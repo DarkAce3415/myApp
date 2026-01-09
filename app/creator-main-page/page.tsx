@@ -97,6 +97,9 @@ export default function CreatorMainPage() {
                 <p className="text-sm text-gray-600 line-clamp-2">
                   {course.description || 'No description available.'}
                 </p>
+                <p className="text-sm text-gray-600">
+                  Videos: {course.videoUrls ? course.videoUrls.length : 0}
+                </p>
                 {course.category && (
                   <span className="text-xs bg-gray-200 px-2 py-1 rounded w-fit">
                     {course.category}
