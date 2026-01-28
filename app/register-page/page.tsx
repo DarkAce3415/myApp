@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { auth, db, rtdb } from '../lib/ClientApp'
+import { auth, db } from '../lib/ClientApp'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 
@@ -13,7 +13,6 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
-  const [isCreator, setIsCreator] = useState(false) 
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -33,12 +32,12 @@ export default function RegisterPage() {
       setError('Passwords do not match.')
       return
     }
-    
+
     setLoading(true)
+
     try {
       const userCred = await createUserWithEmailAndPassword(auth, email, password)
       const uid = userCred.user.uid
-      console.log('userCeed success')
 
       await setDoc(doc(db, 'users', uid), {
         uid,
@@ -46,15 +45,6 @@ export default function RegisterPage() {
         displayName: displayName || null,
         createdAt: serverTimestamp(),
       })
-
-      if (isCreator) {
-        await setDoc(doc(db, 'creators', uid), {
-          uid,
-          email: userCred.user.email,
-          displayName: displayName || null,
-          createdAt: serverTimestamp(),
-        })
-      }
       setSuccess('Account created successfully. Redirecting to login…')
       setTimeout(() => {
         router.push('/login-page')
@@ -118,19 +108,6 @@ export default function RegisterPage() {
           >
             {loading ? 'Creating…' : 'Create account'}
           </button>
-          <div className="flex items-center space-x-2">
-            <input
-              id="creator"
-              type="checkbox"
-              checked={isCreator}
-              onChange={(e) => setIsCreator(e.target.checked)}
-              disabled={loading}
-              className="w-4 h-4"
-            />
-            <label htmlFor="creator" className="text-sm">
-              Create creator account (Realtime Database)
-            </label>
-          </div>
 
           <div className="flex items-center justify-center mt-2">
             <button
@@ -149,3 +126,4 @@ export default function RegisterPage() {
     </div>
   )
 }
+// ...existing code...
