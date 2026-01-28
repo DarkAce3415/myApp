@@ -61,7 +61,7 @@ export default function CreatorUploadPage() {
       setDescription('')
       setTitle('')
       setCategory('')
-      router.push('/creator-main-page') // Redirect to creator main page
+      router.push('/creator-main-page') 
       setVideos([]);
     } catch (err: any) {
       setMessage(err?.message || 'Upload failed.')
