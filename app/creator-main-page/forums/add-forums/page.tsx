@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '../../../lib/ClientApp'; 
-import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, setDoc, doc, increment } from 'firebase/firestore';
 
 interface ForumFormData {
   title: string;
@@ -31,12 +31,19 @@ export default function CreateForumPage() {
   useEffect(() => {
     const fetchTopics = async () => {
       try {
+        const topicsSnap = await getDocs(collection(db, 'topics'));
+        const topicNames = topicsSnap.docs.map((d) => (d.data() as any).name);
+        if (topicNames.length) {
+          setTopics(topicNames);
+          return;
+        }
+
+        // Fallback: derive from forums if topics collection is empty
         const forumsCol = collection(db, 'forums');
         const snap = await getDocs(forumsCol);
         const unique = Array.from(new Set(snap.docs.map((d) => (d.data() as any).topic || 'General')));
         setTopics(unique.length ? unique : ['General']);
       } catch (err) {
-        // ignore errors here, topics are optional
         setTopics(['General']);
       }
     };
@@ -62,6 +69,8 @@ export default function CreateForumPage() {
     }));
   };
 
+  const slugify = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '')
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -74,6 +83,15 @@ export default function CreateForumPage() {
         topic: topicToSave,
         createdAt: serverTimestamp(),
       });
+
+      // Upsert topic into topics collection for normalization & fast reads
+      const topicId = slugify(topicToSave || 'general') || 'general';
+      await setDoc(doc(db, 'topics', topicId), {
+        name: topicToSave,
+        updatedAt: serverTimestamp(),
+        count: increment(1),
+      }, { merge: true });
+
       router.push('/creator-main-page/forums'); // Redirect to the forums list after creation
     } catch (err: any) {
       setError('Failed to create forum: ' + err.message);
