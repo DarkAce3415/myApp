@@ -14,6 +14,7 @@ interface Forum {
   weeklyLikes?: number
   totalLikes?: number
   liked?: boolean
+  isCreator?: boolean
 }
 
 export default function UserForumsPage() {
@@ -76,6 +77,7 @@ export default function UserForumsPage() {
               weeklyLikes,
               totalLikes,
               liked,
+              isCreator: data.isCreator || false,
             } as Forum
           })
         )
@@ -193,10 +195,15 @@ export default function UserForumsPage() {
               <div key={forum.id} className="border border-black rounded-lg p-6 shadow-sm hover:shadow-md transition cursor-pointer bg-white hover:bg-gray-50">
                 <div className="flex justify-between items-start gap-4">
                   <Link
-                    href={`/user/forums/view-forums/${forum.id}`}
+                    href={`/user/forums/view-forum/${forum.id}`}
                     className="flex-1"
                   >
-                    <h2 className="text-2xl font-semibold mb-2 text-black hover:text-gray-700">{forum.title}</h2>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h2 className="text-2xl font-semibold text-black hover:text-gray-700">{forum.title}</h2>
+                      {forum.isCreator && (
+                          <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>
+                      )}
+                    </div>
                     <div className="border-t border-gray-200 pt-3">
                       <p className="text-gray-700">{forum.description}</p>
                     </div>

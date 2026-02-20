@@ -13,6 +13,7 @@ interface Forum {
     weeklyLikes?: number;
     totalLikes?: number;
     liked?: boolean;
+    isCreator?: boolean;
 } 
 
 export default function CreatorForumsPage() {
@@ -78,6 +79,7 @@ export default function CreatorForumsPage() {
                             weeklyLikes,
                             totalLikes,
                             liked,
+                            isCreator: data.isCreator || false,
                         } as Forum;
                     })
                 );
@@ -189,8 +191,13 @@ export default function CreatorForumsPage() {
                     {filtered.map((forum) => (
                         <div key={forum.id} className="flex justify-center my-4">
                             <li className="w-2/3 border border-gray-300 rounded-lg p-4 shadow-md bg-white">
-                                <Link href={`/creator-main-page/forums/${forum.id}`} className="block">
-                                    <h2 className="text-xl font-semibold mb-2 text-black">{forum.title}</h2>
+                                <Link href={`/creator-main-page/forums/view-forums/${forum.id}`} className="block">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <h2 className="text-xl font-semibold text-black">{forum.title}</h2>
+                                        {forum.isCreator && (
+                                            <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>
+                                        )}
+                                    </div>
                                 </Link>
                                 <div className="flex items-center justify-between border-t border-gray-200 pt-2">
                                     <p className="text-black">{forum.description}</p>

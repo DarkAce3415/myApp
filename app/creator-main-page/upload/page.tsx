@@ -19,6 +19,7 @@ export default function CreatorUploadPage() {
   const [description, setDescription] = useState('')
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
+  const [courseThumbnail, setCourseThumbnail] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +54,7 @@ export default function CreatorUploadPage() {
         category,
         description: description.trim(),
         videoUrls: videos,
+        courseThumbnail: courseThumbnail,
         createdAt: serverTimestamp(),
       })
 
@@ -61,6 +63,7 @@ export default function CreatorUploadPage() {
       setDescription('')
       setTitle('')
       setCategory('')
+      setCourseThumbnail(null)
       router.push('/creator-main-page') 
       setVideos([]);
     } catch (err: any) {
@@ -136,7 +139,23 @@ export default function CreatorUploadPage() {
             ))}
           </select>
 
-          <label className="block text-sm font-medium">Video File</label>
+          <label className="block text-sm font-medium">Course Thumbnail</label>
+          <div className="flex items-center gap-4 mb-4">
+            {courseThumbnail && (
+              <img src={courseThumbnail} alt="Course Thumbnail" className="w-24 h-16 object-cover rounded" />
+            )}
+            <CldUploadWidget uploadPreset="next_js_cloudinary" onSuccess={(result: any) => setCourseThumbnail(result.info.secure_url)}>
+              {({ open }) => (
+                <button
+                  type="button"
+                  onClick={() => open()}
+                  className="px-3 py-2 rounded border border-black bg-white text-black hover:bg-gray-100 transition"
+                >
+                  {courseThumbnail ? 'Change Thumbnail' : 'Upload Thumbnail'}
+                </button>
+              )}
+            </CldUploadWidget>
+          </div>
           <CldUploadWidget uploadPreset="next_js_cloudinary"
             onSuccess={(result: any) => {
               setVideos((prevVideos) => [

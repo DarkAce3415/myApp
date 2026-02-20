@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '../../../lib/ClientApp'; 
-import { collection, addDoc, serverTimestamp, getDocs, setDoc, doc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, setDoc, doc, increment } from 'firebase/firestore';
 
 interface ForumFormData {
   title: string;
@@ -18,51 +18,26 @@ export default function CreateForumPage() {
   const [formData, setFormData] = useState<ForumFormData>({
     title: '',
     description: '',
-    topic: 'General',
+    topic: 'Machine Learning',
     creatorId: auth.currentUser?.uid || '', // Replace with actual creator ID from authentication context
     isCreator: true, // This page is specifically for creators
   });
-  const [topics, setTopics] = useState<string[]>([]);
-  const [showNewTopic, setShowNewTopic] = useState(false);
-  const [newTopic, setNewTopic] = useState('');
+  // AI-related topics only
+  const [topics] = useState<string[]>([
+    'Machine Learning',
+    'Deep Learning',
+    'Natural Language Processing',
+    'Computer Vision',
+    'Robotics',
+    'AI Ethics',
+    'Generative AI',
+    'Neural Networks',
+  ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchTopics = async () => {
-      try {
-        const topicsSnap = await getDocs(collection(db, 'topics'));
-        const topicNames = topicsSnap.docs.map((d) => (d.data() as any).name);
-        if (topicNames.length) {
-          setTopics(topicNames);
-          return;
-        }
-
-        // Fallback: derive from forums if topics collection is empty
-        const forumsCol = collection(db, 'forums');
-        const snap = await getDocs(forumsCol);
-        const unique = Array.from(new Set(snap.docs.map((d) => (d.data() as any).topic || 'General')));
-        setTopics(unique.length ? unique : ['General']);
-      } catch (err) {
-        setTopics(['General']);
-      }
-    };
-
-    fetchTopics();
-  }, []);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target as HTMLInputElement;
-    if (name === 'topic') {
-      if (value === '__new__') {
-        setShowNewTopic(true);
-        setFormData((prev) => ({ ...prev, topic: '' }));
-        return;
-      } else {
-        setShowNewTopic(false);
-      }
-    }
-
     setFormData((prevData) => ({
       ...prevData,
       [name]: value,
@@ -77,17 +52,15 @@ export default function CreateForumPage() {
     setError(null);
 
     try {
-      const topicToSave = showNewTopic && newTopic ? newTopic : formData.topic;
       await addDoc(collection(db, 'forums'), {
         ...formData,
-        topic: topicToSave,
         createdAt: serverTimestamp(),
       });
 
       // Upsert topic into topics collection for normalization & fast reads
-      const topicId = slugify(topicToSave || 'general') || 'general';
+      const topicId = slugify(formData.topic || 'general') || 'general';
       await setDoc(doc(db, 'topics', topicId), {
-        name: topicToSave,
+        name: formData.topic,
         updatedAt: serverTimestamp(),
         count: increment(1),
       }, { merge: true });
@@ -126,23 +99,15 @@ export default function CreateForumPage() {
           <select
             id="topic"
             name="topic"
-            value={showNewTopic ? '__new__' : formData.topic}
+            value={formData.topic}
             onChange={handleChange}
             className="border rounded w-full py-2 px-3"
           >
             {topics.map((t) => (
               <option value={t} key={t}>{t}</option>
             ))}
-            <option value="__new__">New topic...</option>
           </select>
         </div>
-
-        {showNewTopic && (
-          <div className="mb-4">
-            <label htmlFor="newTopic" className="block text-gray-700 text-sm font-bold mb-2">New Topic Name:</label>
-            <input id="newTopic" name="newTopic" value={newTopic} onChange={(e) => setNewTopic(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
-          </div>
-        )}
 
         <div className="mb-6">
           <label htmlFor="description" className="block text-gray-700 text-sm font-bold mb-2">
