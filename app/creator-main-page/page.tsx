@@ -81,10 +81,18 @@ export default function CreatorMainPage() {
                 onClick={() => router.push(`/creator-main-page/view-course/${course.id}`)}
                 className="border border-black rounded p-4 flex flex-col gap-2 hover:shadow-lg transition cursor-pointer"
               >
-                <div className="h-40 bg-gray-100 rounded flex items-center justify-center border border-gray-200">
-                  <span className="text-gray-400 font-medium">
-                    {course.title ? course.title[0] : 'C'}
-                  </span>
+                <div className="h-40 bg-gray-100 rounded flex items-center justify-center border border-gray-200 overflow-hidden">
+                  {course.courseThumbnail ? (
+                    <img 
+                      src={course.courseThumbnail} 
+                      alt={course.title || 'Course thumbnail'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-gray-400 font-medium">
+                      {course.title ? course.title[0] : 'C'}
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-xl font-bold mt-2">
                   {course.title || 'Untitled Course'}
