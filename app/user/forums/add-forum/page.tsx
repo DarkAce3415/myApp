@@ -74,13 +74,13 @@ export default function UserCreateForumPage() {
       <h1 className="text-2xl font-bold mb-4">Create New Forum</h1>
       <form onSubmit={handleSubmit} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
         <div className="mb-4">
-          <label htmlFor="title" className="block text-gray-700 text-sm font-bold mb-2">Forum Title:</label>
-          <input id="title" name="title" value={formData.title} onChange={handleChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+          <label htmlFor="title" className="block text-black text-sm font-bold mb-2">Forum Title:</label>
+          <input id="title" name="title" value={formData.title} onChange={handleChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" required />
         </div>
 
         <div className="mb-4">
-          <label htmlFor="topic" className="block text-gray-700 text-sm font-bold mb-2">Topic:</label>
-          <select id="topic" name="topic" value={formData.topic} onChange={handleChange} className="border rounded w-full py-2 px-3 text-gray-900">
+          <label htmlFor="topic" className="block text-black text-sm font-bold mb-2">Topic:</label>
+          <select id="topic" name="topic" value={formData.topic} onChange={handleChange} className="border rounded w-full py-2 px-3 text-black">
             {topics.map((t) => (
               <option value={t} key={t}>{t}</option>
             ))}
@@ -88,8 +88,8 @@ export default function UserCreateForumPage() {
         </div>
 
         <div className="mb-6">
-          <label htmlFor="description" className="block text-gray-700 text-sm font-bold mb-2">Description:</label>
-          <textarea id="description" name="description" value={formData.description} onChange={handleChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline h-32" required></textarea>
+          <label htmlFor="description" className="block text-black text-sm font-bold mb-2">Description:</label>
+          <textarea id="description" name="description" value={formData.description} onChange={handleChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline h-32" required></textarea>
         </div>
 
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}

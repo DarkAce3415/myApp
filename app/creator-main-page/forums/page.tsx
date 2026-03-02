@@ -26,7 +26,6 @@ export default function CreatorForumsPage() {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [liking, setLiking] = useState<Record<string, boolean>>({});
 
-    // Load topics from topics collection for faster reads
     useEffect(() => {
         const fetchTopicsOnly = async () => {
             try {
@@ -34,7 +33,6 @@ export default function CreatorForumsPage() {
                 const topicNames = topicsSnap.docs.map((d) => (d.data() as any).name);
                 if (topicNames.length) setTopics(topicNames);
             } catch (err) {
-                // ignore
             }
         };
 
@@ -47,23 +45,20 @@ export default function CreatorForumsPage() {
                 const forumsCollection = collection(db, 'forums');
                 const forumSnapshot = await getDocs(forumsCollection);
 
-                const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+                const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
                 const forumsList = await Promise.all(
                     forumSnapshot.docs.map(async (d) => {
                         const data = d.data() as any;
                         const id = d.id;
 
-                        // Count likes in the last 7 days
                         const likes7Query = query(collection(db, 'forums', id, 'likes'), where('timestamp', '>=', cutoff));
                         const likes7Snapshot = await getDocs(likes7Query);
                         const weeklyLikes = likes7Snapshot.size;
 
-                        // Count total likes
                         const likesAllSnapshot = await getDocs(collection(db, 'forums', id, 'likes'));
                         const totalLikes = likesAllSnapshot.size;
 
-                        // Check if current user liked this forum
                         let liked = false;
                         const uid = auth.currentUser?.uid;
                         if (uid) {
@@ -151,7 +146,6 @@ export default function CreatorForumsPage() {
     if (loading) return <div>Loading forums — please wait...</div>;
     if (error) return <div>Something went wrong while loading forums: {error}</div>;
 
-    // Apply topic + search filtering, then sort by selected ranking (7d or total)
     const filtered = forums
         .filter((f) => (selectedTopic === 'All' || f.topic === selectedTopic) && f.title.toLowerCase().includes(searchQuery.toLowerCase()))
         .sort((a, b) => ((use7Day ? (b.weeklyLikes || 0) : (b.totalLikes || 0)) - (use7Day ? (a.weeklyLikes || 0) : (a.totalLikes || 0))));
@@ -164,7 +158,7 @@ export default function CreatorForumsPage() {
                     <input type="text" placeholder="Search by title..." value={searchQuery} onChange={handleSearchChange} className="border rounded p-1" />
                     <label className="flex items-center gap-2">
                         <input type="checkbox" checked={use7Day} onChange={handleToggle7Day} />
-                        <span className="text-sm">Use 7-day ranking</span>
+                        <span className="text-sm text-black">Use 7-day ranking</span>
                     </label>
                     <div>
                         <label className="mr-2">Filter by topic:</label>
@@ -213,7 +207,7 @@ export default function CreatorForumsPage() {
                                               </span>
                                             ) : forum.liked ? 'Liked' : 'Like'}
                                         </button> 
-                                        <span className="text-sm text-gray-600">{use7Day ? (forum.weeklyLikes || 0) + ' likes (7d)' : (forum.totalLikes || 0) + ' likes'}</span>
+                                        <span className="text-sm text-black">{use7Day ? (forum.weeklyLikes || 0) + ' likes (7d)' : (forum.totalLikes || 0) + ' likes'}</span>
                                     </div>
                                 </div>
                             </li>

@@ -9,7 +9,7 @@ import { CldUploadWidget } from 'next-cloudinary'
 interface VideoData {
   url: string;
   title: string;
-  thumbnailUrl?: string;
+  description?: string;
 }
 
 export default function CreatorUploadPage() {
@@ -82,10 +82,10 @@ export default function CreatorUploadPage() {
     });
   };
 
-  const handleThumbnailUpload = (index: number, url: string) => {
+  const handleVideoDescriptionChange = (index: number, newDescription: string) => {
     setVideos((prevVideos) => {
       const newVideos = [...prevVideos];
-      newVideos[index] = { ...newVideos[index], thumbnailUrl: url };
+      newVideos[index] = { ...newVideos[index], description: newDescription };
       return newVideos;
     });
   };
@@ -180,21 +180,7 @@ export default function CreatorUploadPage() {
           {videos.length > 0 && (
             <div className="mt-4 space-y-4">
               {videos.map((video, index) => (
-                <div key={index} className="border border-gray-300 rounded p-3 flex flex-col sm:flex-row items-center gap-4">
-                  <div className="flex-shrink-0 w-full sm:w-40 h-24 bg-gray-100 rounded overflow-hidden flex items-center justify-center relative">
-                    {video.thumbnailUrl ? (
-                      <img src={video.thumbnailUrl} alt={`Thumbnail for Video ${index + 1}`} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-gray-400 text-sm">Video {index + 1}</span>
-                    )}
-                    <CldUploadWidget uploadPreset="next_js_cloudinary" onSuccess={(result: any) => handleThumbnailUpload(index, result.info.secure_url)}>
-                      {({ open }) => (
-                        <button type="button" onClick={() => open()} className="absolute bottom-1 right-1 bg-black text-white text-xs px-2 py-1 rounded opacity-80 hover:opacity-100">
-                          {video.thumbnailUrl ? 'Change' : 'Add'} Thumbnail
-                        </button>
-                      )}
-                    </CldUploadWidget>
-                  </div>
+                <div key={index} className="border border-gray-300 rounded p-3 flex flex-col gap-2">
                   <div className="flex-grow flex flex-col gap-2 w-full">
                     <input
                       type="text"
@@ -202,6 +188,13 @@ export default function CreatorUploadPage() {
                       onChange={(e) => handleVideoTitleChange(index, e.target.value)}
                       className="border border-gray-300 rounded p-1 text-sm font-medium text-black"
                       placeholder={`Video ${index + 1} Title`}
+                    />
+                    <textarea
+                      value={video.description || ''}
+                      onChange={(e) => handleVideoDescriptionChange(index, e.target.value)}
+                      className="border border-gray-300 rounded p-1 text-sm text-black"
+                      placeholder={`Video ${index + 1} Description (optional)`}
+                      rows={2}
                     />
                     <div className="flex gap-2">
                       <button

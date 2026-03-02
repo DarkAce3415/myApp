@@ -74,18 +74,18 @@ export default function UserViewCoursePage() {
           <div className="flex-1">
             <div className="w-full aspect-video bg-black rounded overflow-hidden flex items-center justify-center">
               {course.videoUrls && course.videoUrls.length > 0 && course.videoUrls[selectedVideoIndex]?.url ? (
-                <iframe
+                <video
                   src={course.videoUrls[selectedVideoIndex].url}
                   className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
+                  controls
+                  controlsList="nodownload"
                 />
               ) : course.videoUrl ? (
-                <iframe
+                <video
                   src={course.videoUrl}
                   className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
+                  controls
+                  controlsList="nodownload"
                 />
               ) : (
                 <span className="text-white">No video available</span>
@@ -94,26 +94,31 @@ export default function UserViewCoursePage() {
             {course.videoUrls && course.videoUrls.length > 0 && (
               <p className="text-gray-600 mt-2">{course.videoUrls[selectedVideoIndex]?.title || 'Untitled Video'}</p>
             )}
+            {course.videoUrls && course.videoUrls.length > 0 && course.videoUrls[selectedVideoIndex]?.description && (
+              <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{course.videoUrls[selectedVideoIndex].description}</p>
+            )}
           </div>
 
           {/* Video Selector */}
           {course.videoUrls && course.videoUrls.length > 0 && (
-            <div className="w-48 bg-gray-50 rounded p-4 border border-gray-200">
-              <h3 className="font-semibold text-lg mb-4">Videos</h3>
-              <div className="flex flex-col gap-2 max-h-96 overflow-y-auto">
-                {course.videoUrls.map((video: any, index: number) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedVideoIndex(index)}
-                    className={`p-3 rounded text-left transition ${
-                      selectedVideoIndex === index
-                        ? 'bg-black text-white'
-                        : 'bg-white text-black border border-gray-300 hover:bg-gray-100'
-                    }`}
-                  >
-                    <p className="font-medium text-sm">{video.title || `Video ${index + 1}`}</p>
-                  </button>
-                ))}
+            <div className="w-48 bg-gray-50 rounded p-4 border border-gray-200 flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <h3 className="font-semibold text-lg">Videos</h3>
+                <div className="flex flex-col gap-2 max-h-96 overflow-y-auto">
+                  {course.videoUrls.map((video: any, index: number) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedVideoIndex(index)}
+                      className={`p-3 rounded text-left transition ${
+                        selectedVideoIndex === index
+                          ? 'bg-black text-white'
+                          : 'bg-white text-black border border-gray-300 hover:bg-gray-100'
+                      }`}
+                    >
+                      <p className="font-medium text-sm">{video.title || `Video ${index + 1}`}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

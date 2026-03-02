@@ -201,8 +201,8 @@ export default function UserViewForumPage() {
             <h1 className="text-3xl font-bold">{forum.title}</h1>
             {forum.isCreator && <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>}
           </div>
-          <p className="text-gray-600 mb-2">Topic: {forum.topic}</p>
-          <p className="text-gray-700">{forum.description}</p>
+          <p className="text-black mb-2">Topic: {forum.topic}</p>
+          <p className="text-black">{forum.description}</p>
         </div>
 
         <div className="mb-6">
@@ -243,14 +243,14 @@ export default function UserViewForumPage() {
 
           <div className="flex flex-col gap-3">
             {sortedComments.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No comments yet. Be the first to comment!</p>
+              <p className="text-black text-center py-4">No comments yet. Be the first to comment!</p>
             ) : (
               sortedComments.map((comment) => (
                 <div key={comment.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-2">User ID: {comment.userId.substring(0, 8)}...</p>
-                  <p className="text-gray-800 mb-3">{comment.text}</p>
+                  <p className="text-sm text-black mb-2">User ID: {comment.userId.substring(0, 8)}...</p>
+                  <p className="text-black mb-3">{comment.text}</p>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">{comment.createdAt.toLocaleDateString()} {comment.createdAt.toLocaleTimeString()}</span>
+                    <span className="text-black">{comment.createdAt.toLocaleDateString()} {comment.createdAt.toLocaleTimeString()}</span>
                     <button
                       onClick={() => handleToggleLikeComment(comment.id, !!comment.liked)}
                       disabled={!!liking[comment.id]}

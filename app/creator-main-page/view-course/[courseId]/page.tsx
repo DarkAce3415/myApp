@@ -10,7 +10,7 @@ import { deleteDoc } from 'firebase/firestore';
 interface VideoData {
   url: string;
   title: string;
-  thumbnailUrl?: string; 
+  description?: string;
 }
 
 export default function EditCoursePage() {
@@ -60,8 +60,8 @@ export default function EditCoursePage() {
         title,
         description,
         videoUrls: videos, 
-        courseThumbnail, 
- category,
+        courseThumbnail: courseThumbnail || null, 
+        category,
       })
       alert('Course updated successfully')
       router.push('/creator-main-page')
@@ -69,21 +69,15 @@ export default function EditCoursePage() {
       console.error('Error updating course:', error)
       alert('Failed to update course')
     }
-  }, [courseId, title, description, videos, router, category])
+  }, [courseId, title, description, videos, courseThumbnail, router, category])
 
   const handleDeleteCourse = useCallback(async () => {
     if (!courseId) return;
 
     if (window.confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
       try {
-        
-        // Delete course document from Firestore
         const docRef = doc(db, 'courses', courseId);
         await deleteDoc(docRef);
-
-        // TODO: Implement Cloudinary deletion for videos and thumbnails
-        // This would involve storing Cloudinary public_ids in Firestore and then using the Cloudinary Admin API to delete them.
-        // For now, only the Firestore document is deleted.
 
         alert('Course deleted successfully!');
         router.push('/creator-main-page');
@@ -103,11 +97,10 @@ export default function EditCoursePage() {
     });
   }, []);
 
-  const handleThumbnailUpload = useCallback((index: number, url: string) => {
+  const handleVideoDescriptionChange = useCallback((index: number, newDescription: string) => {
     setVideos((prevVideos) => {
       const newVideos = [...prevVideos];
-      newVideos[index] = { ...newVideos[index], thumbnailUrl: url };
-      setMessage('Thumbnail uploaded. Remember to save changes.');
+      newVideos[index] = { ...newVideos[index], description: newDescription };
       return newVideos;
     });
   }, []);
@@ -213,21 +206,7 @@ export default function EditCoursePage() {
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {videos.map((video, index) => (
-                <div key={index} className="border border-gray-300 rounded p-3 flex flex-col sm:flex-row items-center gap-4">
-                  <div className="flex-shrink-0 w-full sm:w-40 h-24 bg-gray-100 rounded overflow-hidden flex items-center justify-center relative">
-                    {video.thumbnailUrl ? (
-                      <img src={video.thumbnailUrl} alt={`Thumbnail for Video ${index + 1}`} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-gray-400 text-sm">Video {index + 1}</span>
-                    )}
-                    <CldUploadWidget uploadPreset="next_js_cloudinary" onSuccess={(result: any) => handleThumbnailUpload(index, result.info.secure_url)}>
-                      {({ open }) => (
-                        <button type="button" onClick={() => open()} className="absolute bottom-1 right-1 bg-black text-white text-xs px-2 py-1 rounded opacity-80 hover:opacity-100">
-                          {video.thumbnailUrl ? 'Change' : 'Add'} Thumbnail
-                        </button>
-                      )}
-                    </CldUploadWidget>
-                  </div>
+                <div key={index} className="border border-gray-300 rounded p-3 flex flex-col gap-2">
                   <div className="flex-grow flex flex-col gap-2 w-full">
                     <input
                       type="text"
@@ -235,6 +214,13 @@ export default function EditCoursePage() {
                       onChange={(e) => handleVideoTitleChange(index, e.target.value)}
                       className="border border-gray-300 rounded p-1 text-sm font-medium"
                       placeholder={`Video ${index + 1} Title`}
+                    />
+                    <textarea
+                      value={video.description || ''}
+                      onChange={(e) => handleVideoDescriptionChange(index, e.target.value)}
+                      className="border border-gray-300 rounded p-1 text-sm"
+                      placeholder={`Video ${index + 1} Description (optional)`}
+                      rows={2}
                     />
                     <p className="text-xs text-gray-500 truncate">{video.url}</p>
                     <div className="flex gap-2">
