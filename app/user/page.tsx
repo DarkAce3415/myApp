@@ -24,6 +24,7 @@ export default function MainPage() {
             category: data.category || 'General',
             videoUrls: data.videoUrls || [],
             ratings: data.ratings || [],
+            courseThumbnail: data.courseThumbnail || null,
           }
         })
         setCourses(coursesList)
@@ -89,11 +90,21 @@ export default function MainPage() {
                     className="border border-black rounded p-4 flex flex-col gap-2 hover:shadow-lg transition cursor-pointer"
                   >
                     <div className="h-40 bg-gray-100 rounded flex items-center justify-center border border-gray-200 overflow-hidden">
-                      {course.videoUrls && course.videoUrls.length > 0 && course.videoUrls[0]?.thumbnailUrl ? (
+                      {course.courseThumbnail ? (
                         <img
-                          src={course.videoUrls[0].thumbnailUrl}
+                          src={course.courseThumbnail}
                           alt={course.title}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                              const span = document.createElement('span');
+                              span.className = 'text-gray-400 font-medium';
+                              span.textContent = course.title ? course.title[0] : 'C';
+                              parent.appendChild(span);
+                            }
+                          }}
                         />
                       ) : (
                         <span className="text-gray-400 font-medium">

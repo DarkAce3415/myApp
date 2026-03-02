@@ -7,21 +7,17 @@ import { usePathname } from 'next/navigation'
 export default function Navbar() {
   const pathname = usePathname()
 
-  // Hide navbar on landing, login, and register pages
   if (pathname === '/' || pathname === '/login-page' || pathname === '/register-page') {
     return null
   }
 
-  // Determine if the user is in the creator or user section based on the URL
   const isCreator = pathname?.startsWith('/creator-main-page')
   const isUser = pathname?.startsWith('/user')
 
-  // Default links
   let mainPageLink = '/login-page'
   let profileLink = '/login-page'
   let forumsLink = '/login-page'
 
-  // Dynamic links based on role
   if (isCreator) {
     mainPageLink = '/creator-main-page'
     profileLink = '/creator-main-page/account'

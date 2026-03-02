@@ -28,7 +28,6 @@ export default function UserForumsPage() {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [liking, setLiking] = useState<Record<string, boolean>>({})
 
-  // Load topics list from topics collection for faster reads
   useEffect(() => {
     const fetchTopicsOnly = async () => {
       try {
@@ -36,7 +35,6 @@ export default function UserForumsPage() {
         const topicNames = topicsSnap.docs.map((d) => (d.data() as any).name)
         if (topicNames.length) setTopics(topicNames)
       } catch (err) {
-        // ignore
       }
     }
 
@@ -48,7 +46,7 @@ export default function UserForumsPage() {
         const forumsCollection = collection(db, 'forums')
         const forumSnapshot = await getDocs(forumsCollection)
 
-        const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
+        const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
         const forumsList = await Promise.all(
           forumSnapshot.docs.map(async (d) => {
@@ -167,7 +165,7 @@ export default function UserForumsPage() {
             <input type="text" placeholder="Search by title..." value={searchQuery} onChange={handleSearchChange} className="border rounded p-1" />
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={use7Day} onChange={handleToggle7Day} />
-              <span className="text-sm">Use 7-day ranking</span>
+              <span className="text-sm text-black">Use 7-day ranking</span>
             </label>
             <div>
               <label className="mr-2">Filter by topic:</label>
@@ -188,7 +186,7 @@ export default function UserForumsPage() {
         </div>
 
         {filtered.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No forums available for the selected topic.</p>
+          <p className="text-black text-center py-8">No forums available for the selected topic.</p>
         ) : (
           <div className="flex flex-col gap-4">
             {filtered.map((forum) => (
@@ -199,13 +197,13 @@ export default function UserForumsPage() {
                     className="flex-1"
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <h2 className="text-2xl font-semibold text-black hover:text-gray-700">{forum.title}</h2>
+                      <h2 className="text-2xl font-semibold text-black hover:text-black">{forum.title}</h2>
                       {forum.isCreator && (
                           <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>
                       )}
                     </div>
                     <div className="border-t border-gray-200 pt-3">
-                      <p className="text-gray-700">{forum.description}</p>
+                      <p className="text-black">{forum.description}</p>
                     </div>
                   </Link>
 
@@ -221,8 +219,8 @@ export default function UserForumsPage() {
                         </span>
                       ) : forum.liked ? 'Liked' : 'Like'}
                     </button>
-                    <span className="text-sm text-gray-600">{use7Day ? (forum.weeklyLikes || 0) + ' likes (7d)' : (forum.totalLikes || 0) + ' likes'}</span>
-                    <span className="text-xs text-gray-500">Topic: {forum.topic}</span>
+                    <span className="text-sm text-black">{use7Day ? (forum.weeklyLikes || 0) + ' likes (7d)' : (forum.totalLikes || 0) + ' likes'}</span>
+                    <span className="text-xs text-black">Topic: {forum.topic}</span>
                   </div>
                 </div>
               </div>
