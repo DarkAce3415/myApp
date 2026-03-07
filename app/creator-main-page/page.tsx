@@ -38,35 +38,20 @@ export default function CreatorMainPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white text-black flex flex-col items-center p-6">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-6">
       <div className="w-full max-w-5xl flex flex-col gap-6">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-80 h-48 flex items-center justify-center border border-black bg-black text-white rounded">
-            <span className="text-xl font-medium">This is the creator page</span>
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              onClick={() => router.push('/creator-main-page/account')}
-              className="px-6 py-2 border border-black rounded bg-black text-white font-semibold hover:opacity-90 transition hover:bg-white hover:text-black"
-              aria-label="Open account page"
-            >
-              Open account
-            </button>
-
-            <button
-              onClick={() => router.push('/creator-main-page/upload')}
-              className="px-6 py-2 border border-black rounded bg-black text-white font-semibold hover:opacity-90 transition hover:bg-white hover:text-black"
-              aria-label="Open upload page"
-            >
-              Upload Course
-            </button>
-          </div>
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">My Created Courses</h2>
+          <button
+            onClick={() => router.push('/creator-main-page/upload')}
+            className="px-6 py-2 border border-white rounded bg-white text-black font-semibold hover:opacity-90 transition hover:bg-gray-200"
+            aria-label="Open upload page"
+          >
+            Upload Course
+          </button>
         </div>
-
-        <h2 className="text-2xl font-bold mt-8">My Created Courses</h2>
         {loading ? (
-          <p>Loading courses...</p>
+          <p className="text-gray-300">Loading courses...</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => {
@@ -79,9 +64,9 @@ export default function CreatorMainPage() {
                 <div
                 key={course.id}
                 onClick={() => router.push(`/creator-main-page/view-course/${course.id}`)}
-                className="border border-black rounded p-4 flex flex-col gap-2 hover:shadow-lg transition cursor-pointer"
+                className="border border-gray-700 bg-gray-800 rounded p-4 flex flex-col gap-2 hover:shadow-lg transition cursor-pointer hover:bg-gray-700"
               >
-                <div className="h-40 bg-gray-100 rounded flex items-center justify-center border border-gray-200 overflow-hidden">
+                <div className="h-40 bg-gray-700 rounded flex items-center justify-center border border-gray-600 overflow-hidden">
                   {course.courseThumbnail && course.courseThumbnail.trim() ? (
                     <img 
                       src={course.courseThumbnail} 
@@ -110,16 +95,16 @@ export default function CreatorMainPage() {
                 <div className="flex items-center gap-1">
                   <span className="text-yellow-400 text-lg">★</span>
                   <span className="font-semibold">{averageRating.toFixed(1)}</span>
-                  <span className="text-gray-500 text-sm">({course.ratings?.length || 0})</span>
+                  <span className="text-gray-400 text-sm">({course.ratings?.length || 0})</span>
                 </div>
-                <p className="text-sm text-gray-600 line-clamp-2">
+                <p className="text-sm text-gray-300 line-clamp-2">
                   {course.description || 'No description available.'}
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-300">
                   Videos: {course.videoUrls ? course.videoUrls.length : 0}
                 </p>
                 {course.category && (
-                  <span className="text-xs bg-gray-200 px-2 py-1 rounded w-fit">
+                  <span className="text-xs bg-gray-600 px-2 py-1 rounded w-fit">
                     {course.category}
                   </span>
                 )}
@@ -127,7 +112,7 @@ export default function CreatorMainPage() {
               )
             })}
             {courses.length === 0 && (
-              <p className="text-gray-500">You haven't created any courses yet.</p>
+              <p className="text-gray-400">You haven't created any courses yet.</p>
             )}
           </div>
         )}

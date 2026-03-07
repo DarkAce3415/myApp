@@ -9,7 +9,7 @@ interface ForumFormData {
   title: string
   description: string
   topic?: string
-  creatorId?: string
+  userId?: string
   isCreator?: boolean
 }
 
@@ -19,7 +19,7 @@ export default function UserCreateForumPage() {
     title: '',
     description: '',
     topic: 'Machine Learning',
-    creatorId: auth.currentUser?.uid || '',
+    userId: auth.currentUser?.uid || '',
     isCreator: false,
   })
   // AI-related topics only
