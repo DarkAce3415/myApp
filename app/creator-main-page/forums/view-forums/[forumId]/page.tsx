@@ -181,90 +181,92 @@ export default function CreatorViewForumPage() {
     return sorted
   }
 
-  if (loading) return <div className="p-6 flex justify-center">Loading forum...</div>
-  if (error) return <div className="p-6 flex justify-center text-red-600">{error}</div>
-  if (!forum) return <div className="p-6 flex justify-center">Forum not found</div>
+  if (loading) return <div className="p-6 flex justify-center text-white bg-gray-900 min-h-screen">Loading forum...</div>
+  if (error) return <div className="p-6 flex justify-center text-red-400 bg-gray-900 min-h-screen">{error}</div>
+  if (!forum) return <div className="p-6 flex justify-center text-white bg-gray-900 min-h-screen">Forum not found</div>
 
   const sortedComments = getSortedComments()
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
-      <button onClick={() => router.back()} className="mb-4 text-blue-600 hover:text-blue-800">
-        ← Back
-      </button>
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-6">
+      <div className="w-full max-w-2xl">
+        <button onClick={() => router.back()} className="mb-4 text-blue-400 hover:text-blue-300">
+          ← Back
+        </button>
 
-      <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <h1 className="text-3xl font-bold">{forum.title}</h1>
-          {forum.isCreator && <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>}
-        </div>
-        <p className="text-black mb-2">Topic: {forum.topic}</p>
-        <p className="text-black">{forum.description}</p>
-      </div>
-
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-4">Comments ({comments.length})</h2>
-
-        <form onSubmit={handleAddComment} className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
-          <textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Share your thoughts on this forum..."
-            className="w-full p-3 border border-gray-300 rounded mb-3"
-            rows={3}
-            required
-          ></textarea>
-          <button
-            type="submit"
-            disabled={submitting || !newComment.trim()}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-60"
-          >
-            {submitting ? 'Posting...' : 'Post Comment'}
-          </button>
-        </form>
-
-        <div className="mb-4 flex gap-4">
-          <button
-            onClick={() => setSortBy('recent')}
-            className={`px-4 py-2 rounded ${sortBy === 'recent' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}
-          >
-            Most Recent
-          </button>
-          <button
-            onClick={() => setSortBy('liked')}
-            className={`px-4 py-2 rounded ${sortBy === 'liked' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}
-          >
-            Most Liked
-          </button>
+        <div className="bg-gray-800 border border-gray-600 rounded-lg p-6 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-3xl font-bold">{forum.title}</h1>
+            {forum.isCreator && <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>}
+          </div>
+          <p className="text-white mb-2">Topic: {forum.topic}</p>
+          <p className="text-white">{forum.description}</p>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {sortedComments.length === 0 ? (
-            <p className="text-black text-center py-4">No comments yet. Be the first to comment!</p>
-          ) : (
-            sortedComments.map((comment) => (
-                <div key={comment.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-sm text-black mb-2">User ID: {comment.userId.substring(0, 8)}...</p>
-                <p className="text-black mb-3">{comment.text}</p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-black">{comment.createdAt.toLocaleDateString()} {comment.createdAt.toLocaleTimeString()}</span>
-                  <button
-                    onClick={() => handleToggleLikeComment(comment.id, !!comment.liked)}
-                    disabled={!!liking[comment.id]}
-                    className={`px-3 py-1 rounded ${comment.liked ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'} ${liking[comment.id] ? 'opacity-60 cursor-not-allowed' : ''}`}
-                  >
-                    {liking[comment.id] ? (
-                      <span className="inline-flex items-center gap-1">
-                        <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      </span>
-                    ) : (
-                      `👍 ${comment.likes || 0}`
-                    )}
-                  </button>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-4">Comments ({comments.length})</h2>
+
+          <form onSubmit={handleAddComment} className="mb-6 bg-gray-800 p-4 rounded-lg border border-gray-600">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Share your thoughts on this forum..."
+              className="w-full p-3 border border-gray-600 rounded mb-3 bg-gray-700 text-white"
+              rows={3}
+              required
+            ></textarea>
+            <button
+              type="submit"
+              disabled={submitting || !newComment.trim()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-60"
+            >
+              {submitting ? 'Posting...' : 'Post Comment'}
+            </button>
+          </form>
+
+          <div className="mb-4 flex gap-4">
+            <button
+              onClick={() => setSortBy('recent')}
+              className={`px-4 py-2 rounded ${sortBy === 'recent' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'}`}
+            >
+              Most Recent
+            </button>
+            <button
+              onClick={() => setSortBy('liked')}
+              className={`px-4 py-2 rounded ${sortBy === 'liked' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'}`}
+            >
+              Most Liked
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {sortedComments.length === 0 ? (
+              <p className="text-white text-center py-4">No comments yet. Be the first to comment!</p>
+            ) : (
+              sortedComments.map((comment) => (
+                  <div key={comment.id} className="bg-gray-800 border border-gray-600 rounded-lg p-4">
+                  <p className="text-sm text-gray-300 mb-2">User ID: {comment.userId.substring(0, 8)}...</p>
+                  <p className="text-white mb-3">{comment.text}</p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300">{comment.createdAt.toLocaleDateString()} {comment.createdAt.toLocaleTimeString()}</span>
+                    <button
+                      onClick={() => handleToggleLikeComment(comment.id, !!comment.liked)}
+                      disabled={!!liking[comment.id]}
+                      className={`px-3 py-1 rounded ${comment.liked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} ${liking[comment.id] ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
+                      {liking[comment.id] ? (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        </span>
+                      ) : (
+                        `👍 ${comment.likes || 0}`
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

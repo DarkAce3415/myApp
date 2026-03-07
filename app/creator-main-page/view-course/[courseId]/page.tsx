@@ -137,11 +137,11 @@ export default function EditCoursePage() {
     setMessage('Course thumbnail uploaded. Remember to save changes.');
   }, []);
   
-  if (loading) return <div className="p-6 flex justify-center">Loading...</div>
-  if (!courseId) return <div className="p-6 flex justify-center">Invalid Course ID</div>
+  if (loading) return <div className="p-6 flex justify-center text-white bg-gray-900 min-h-screen">Loading...</div>
+  if (!courseId) return <div className="p-6 flex justify-center text-white bg-gray-900 min-h-screen">Invalid Course ID</div>
 
   return (
-    <div className="min-h-screen bg-white text-black flex flex-col items-center p-6">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-6">
       <div className="w-full max-w-2xl flex flex-col gap-6">
         <h1 className="text-2xl font-bold">Edit Course</h1>
         
@@ -151,7 +151,7 @@ export default function EditCoursePage() {
             type="text" 
             value={title} 
             onChange={(e) => setTitle(e.target.value)}
-            className="border border-black rounded p-2"
+            className="border border-gray-600 rounded p-2 bg-gray-800 text-white focus:outline-none focus:border-white"
             placeholder="Course Title"
           />
         </div>
@@ -161,7 +161,7 @@ export default function EditCoursePage() {
           <textarea 
             value={description} 
             onChange={(e) => setDescription(e.target.value)}
-            className="border border-black rounded p-2 h-32"
+            className="border border-gray-600 rounded p-2 h-32 bg-gray-800 text-white focus:outline-none focus:border-white"
             placeholder="Course Description"
           />
         </div>
@@ -171,7 +171,7 @@ export default function EditCoursePage() {
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="border border-black rounded p-2"
+            className="border border-gray-600 rounded p-2 bg-gray-800 text-white focus:outline-none focus:border-white"
           >
             <option value="">Select a category</option>
             {['IoT', 'Deep Learning', 'Video Recognition', 'Machine Learning', 'Natural Language Processing', 'Robotics'].map((cat) => (
@@ -190,7 +190,7 @@ export default function EditCoursePage() {
                 <button
                   type="button"
                   onClick={() => open()}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
                   {courseThumbnail ? 'Change Thumbnail' : 'Upload Thumbnail'}
                 </button>
@@ -202,33 +202,33 @@ export default function EditCoursePage() {
         <div className="flex flex-col gap-2">
           <label className="font-semibold">Course Videos</label>
           {videos.length === 0 ? (
-            <p className="text-gray-600">No videos uploaded for this course yet.</p>
+            <p className="text-gray-400">No videos uploaded for this course yet.</p>
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {videos.map((video, index) => (
-                <div key={index} className="border border-gray-300 rounded p-3 flex flex-col gap-2">
+                <div key={index} className="border border-gray-600 bg-gray-800 rounded p-3 flex flex-col gap-2">
                   <div className="flex-grow flex flex-col gap-2 w-full">
                     <input
                       type="text"
                       value={video.title}
                       onChange={(e) => handleVideoTitleChange(index, e.target.value)}
-                      className="border border-gray-300 rounded p-1 text-sm font-medium"
+                      className="border border-gray-600 rounded p-1 text-sm font-medium bg-gray-700 text-white"
                       placeholder={`Video ${index + 1} Title`}
                     />
                     <textarea
                       value={video.description || ''}
                       onChange={(e) => handleVideoDescriptionChange(index, e.target.value)}
-                      className="border border-gray-300 rounded p-1 text-sm"
+                      className="border border-gray-600 rounded p-1 text-sm bg-gray-700 text-white"
                       placeholder={`Video ${index + 1} Description (optional)`}
                       rows={2}
                     />
-                    <p className="text-xs text-gray-500 truncate">{video.url}</p>
+                    <p className="text-xs text-gray-400 truncate">{video.url}</p>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => handleMoveVideo(index, 'up')}
                         disabled={index === 0}
-                        className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                        className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
                       >
                         Move Up
                       </button>
@@ -236,14 +236,14 @@ export default function EditCoursePage() {
                         type="button"
                         onClick={() => handleMoveVideo(index, 'down')}
                         disabled={index === videos.length - 1}
-                        className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                        className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
                       >
                         Move Down
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteVideo(index)}
-                        className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
                       >
                         Delete
                       </button>
@@ -261,7 +261,7 @@ export default function EditCoursePage() {
               <button
                 type="button"
                 onClick={() => open()}
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition mt-4"
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition mt-4"
               >
                 Add New Video
               </button>
@@ -272,26 +272,26 @@ export default function EditCoursePage() {
         <div className="flex gap-4">
           <button 
             onClick={handleUpdate}
-            className="px-6 py-2 bg-black text-white rounded font-semibold hover:opacity-90 transition"
+            className="px-6 py-2 bg-white text-black rounded font-semibold hover:opacity-90 transition"
           >
             Save Changes
           </button>
           <button 
             onClick={() => router.back()}
-            className="px-6 py-2 border border-black rounded font-semibold hover:bg-gray-100 transition"
+            className="px-6 py-2 border border-white text-white rounded font-semibold hover:bg-gray-800 transition"
           >
             Cancel
           </button>
           <button
             onClick={handleDeleteCourse}
-            className="px-6 py-2 bg-red-500 text-white rounded font-semibold hover:bg-red-600 transition"
+            className="px-6 py-2 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition"
             type="button"
           >
             Delete Course
           </button>
         </div>
 
-        {message && <p className="text-sm mt-4 text-blue-600">{message}</p>}
+        {message && <p className="text-sm mt-4 text-green-400">{message}</p>}
       </div>
     </div>
   )

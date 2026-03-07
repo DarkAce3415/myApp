@@ -111,8 +111,8 @@ export default function CreatorUploadPage() {
 
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white text-black rounded-lg shadow-lg p-8">
+    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-gray-800 text-white rounded-lg shadow-lg p-8">
         <h1 className="text-2xl font-bold mb-4 text-center">Upload Course</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -121,7 +121,7 @@ export default function CreatorUploadPage() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 rounded border border-black bg-white text-black focus:outline-none"
+            className="w-full px-3 py-2 rounded border border-gray-600 bg-gray-700 text-white focus:outline-none focus:border-white"
             placeholder="Enter course title"
             required
           />
@@ -130,7 +130,7 @@ export default function CreatorUploadPage() {
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-3 py-2 rounded border border-black bg-white text-black focus:outline-none"
+            className="w-full px-3 py-2 rounded border border-gray-600 bg-gray-700 text-white focus:outline-none focus:border-white"
             required
           >
             <option value="">Select a category</option>
@@ -149,7 +149,7 @@ export default function CreatorUploadPage() {
                 <button
                   type="button"
                   onClick={() => open()}
-                  className="px-3 py-2 rounded border border-black bg-white text-black hover:bg-gray-100 transition"
+                  className="px-3 py-2 rounded border border-gray-600 bg-gray-700 text-white hover:bg-gray-600 transition"
                 >
                   {courseThumbnail ? 'Change Thumbnail' : 'Upload Thumbnail'}
                 </button>
@@ -170,7 +170,7 @@ export default function CreatorUploadPage() {
                 <button
                   type="button"
                   onClick={() => open()}
-                  className="w-full px-3 py-2 rounded border border-black bg-white text-black hover:bg-gray-100 transition"
+                  className="w-full px-3 py-2 rounded border border-gray-600 bg-gray-700 text-white hover:bg-gray-600 transition"
                 >
                   Upload Video
                 </button>
@@ -180,19 +180,19 @@ export default function CreatorUploadPage() {
           {videos.length > 0 && (
             <div className="mt-4 space-y-4">
               {videos.map((video, index) => (
-                <div key={index} className="border border-gray-300 rounded p-3 flex flex-col gap-2">
+                <div key={index} className="border border-gray-600 bg-gray-700 rounded p-3 flex flex-col gap-2">
                   <div className="flex-grow flex flex-col gap-2 w-full">
                     <input
                       type="text"
                       value={video.title}
                       onChange={(e) => handleVideoTitleChange(index, e.target.value)}
-                      className="border border-gray-300 rounded p-1 text-sm font-medium text-black"
+                      className="border border-gray-600 rounded p-1 text-sm font-medium bg-gray-600 text-white"
                       placeholder={`Video ${index + 1} Title`}
                     />
                     <textarea
                       value={video.description || ''}
                       onChange={(e) => handleVideoDescriptionChange(index, e.target.value)}
-                      className="border border-gray-300 rounded p-1 text-sm text-black"
+                      className="border border-gray-600 rounded p-1 text-sm bg-gray-600 text-white"
                       placeholder={`Video ${index + 1} Description (optional)`}
                       rows={2}
                     />
@@ -201,7 +201,7 @@ export default function CreatorUploadPage() {
                         type="button"
                         onClick={() => handleMoveVideo(index, 'up')}
                         disabled={index === 0}
-                        className="px-3 py-1 text-sm bg-gray-200 text-black rounded hover:bg-gray-300 disabled:opacity-50"
+                        className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
                       >
                         Move Up
                       </button>
@@ -209,7 +209,7 @@ export default function CreatorUploadPage() {
                         type="button"
                         onClick={() => handleMoveVideo(index, 'down')}
                         disabled={index === videos.length - 1}
-                        className="px-3 py-1 text-sm bg-gray-200 text-black rounded hover:bg-gray-300 disabled:opacity-50"
+                        className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
                       >
                         Move Down
                       </button>
@@ -217,7 +217,7 @@ export default function CreatorUploadPage() {
                     <button
                       type="button"
                       onClick={() => handleDeleteVideo(index)}
-                      className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 self-start"
+                      className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 self-start"
                     >
                       Delete Video
                     </button>
@@ -231,7 +231,7 @@ export default function CreatorUploadPage() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 rounded border border-black bg-white text-black focus:outline-none"
+            className="w-full px-3 py-2 rounded border border-gray-600 bg-gray-700 text-white focus:outline-none focus:border-white"
             rows={4}
             placeholder="Enter detailed description for the course..."
             required
@@ -240,7 +240,7 @@ export default function CreatorUploadPage() {
           <button
             type="submit"
             disabled={loading || videos.length === 0}
-            className="w-full mt-2 py-2 rounded bg-black text-white font-semibold hover:opacity-90 transition disabled:opacity-50"
+            className="w-full mt-2 py-2 rounded bg-white text-black font-semibold hover:opacity-90 transition disabled:opacity-50"
           >
             {loading ? 'Saving...' : 'Save Course'}
           </button>

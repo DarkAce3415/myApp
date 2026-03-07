@@ -36,8 +36,8 @@ export default function AccountPageCreator() {
         )
     }
     return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
-            <div className="w-full max-w-md bg-white text-black rounded-lg shadow-lg p-8">
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-6">
+            <div className="w-full max-w-md bg-gray-800 text-white rounded-lg shadow-lg p-8">
                 <h1 className="text-2xl font-bold mb-4 text-center">Creator Account Page</h1>
                 <p className="text-center mb-6">Welcome to your creator account page!</p>
                 <button

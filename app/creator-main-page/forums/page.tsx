@@ -143,78 +143,82 @@ export default function CreatorForumsPage() {
         }
     };
 
-    if (loading) return <div>Loading forums — please wait...</div>;
-    if (error) return <div>Something went wrong while loading forums: {error}</div>;
+    if (loading) return <div className="p-6 flex justify-center text-white bg-gray-900 min-h-screen">Loading forums — please wait...</div>;
+    if (error) return <div className="p-6 flex justify-center text-red-400 bg-gray-900 min-h-screen">Something went wrong while loading forums: {error}</div>;
 
     const filtered = forums
         .filter((f) => (selectedTopic === 'All' || f.topic === selectedTopic) && f.title.toLowerCase().includes(searchQuery.toLowerCase()))
         .sort((a, b) => ((use7Day ? (b.weeklyLikes || 0) : (b.totalLikes || 0)) - (use7Day ? (a.weeklyLikes || 0) : (a.totalLikes || 0))));
 
     return (
-        <div>
-            <div className="flex items-center justify-between mb-4 gap-4">
-                <h1 className="text-2xl font-bold">Creator Forums</h1>
-                <div className="flex items-center gap-4">
-                    <input type="text" placeholder="Search by title..." value={searchQuery} onChange={handleSearchChange} className="border rounded p-1" />
-                    <label className="flex items-center gap-2">
-                        <input type="checkbox" checked={use7Day} onChange={handleToggle7Day} />
-                        <span className="text-sm text-black">Use 7-day ranking</span>
-                    </label>
-                    <div>
-                        <label className="mr-2">Filter by topic:</label>
-                        <select value={selectedTopic} onChange={handleTopicChange} className="border rounded p-1">
-                            <option value="All">All Topics</option>
-                            {topics.map((t) => (
-                                <option key={t} value={t}>{t}</option>
-                            ))}
-                        </select>
-                    </div>
+        <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-6">
+            <div className="w-full max-w-4xl flex flex-col gap-6">
+                <div className="flex items-center justify-between mb-4 gap-4">
+                    <h1 className="text-2xl font-bold">Creator Forums</h1>
+                    <div className="flex items-center gap-4">
+                        <input type="text" placeholder="Search by title..." value={searchQuery} onChange={handleSearchChange} className="border border-gray-600 rounded p-1 bg-gray-800 text-white" />
+                        <label className="flex items-center gap-2">
+                            <input type="checkbox" checked={use7Day} onChange={handleToggle7Day} />
+                            <span className="text-sm text-white">Use 7-day ranking</span>
+                        </label>
+                        <div>
+                            <label className="mr-2">Filter by topic:</label>
+                            <select value={selectedTopic} onChange={handleTopicChange} className="border border-gray-600 rounded p-1 bg-gray-800 text-white">
+                                <option value="All">All Topics</option>
+                                {topics.map((t) => (
+                                    <option key={t} value={t}>{t}</option>
+                                ))}
+                            </select>
+                        </div>
 
-                    <div>
+                        <Link href="/creator-main-page/forums/my-forums" className="inline-block">
+                            <button className="px-4 py-2 border border-white rounded bg-white text-black font-semibold hover:bg-gray-200 transition">My Forums</button>
+                        </Link>
+
                         <Link href="/creator-main-page/forums/add-forums" className="inline-block">
-                            <button className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded">Create Forum</button>
+                            <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded">Create Forum</button>
                         </Link>
                     </div>
                 </div>
-            </div>
 
-            {filtered.length === 0 ? (
-                <p>No forums found. Be the first to create a forum to start discussions.</p>
-            ) : (
-                <ul>
-                    {filtered.map((forum) => (
-                        <div key={forum.id} className="flex justify-center my-4">
-                            <li className="w-2/3 border border-gray-300 rounded-lg p-4 shadow-md bg-white">
-                                <Link href={`/creator-main-page/forums/view-forums/${forum.id}`} className="block">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <h2 className="text-xl font-semibold text-black">{forum.title}</h2>
-                                        {forum.isCreator && (
-                                            <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>
-                                        )}
-                                    </div>
-                                </Link>
-                                <div className="flex items-center justify-between border-t border-gray-200 pt-2">
-                                    <p className="text-black">{forum.description}</p>
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={() => handleToggleLike(forum.id, !!forum.liked)}
+                {filtered.length === 0 ? (
+                    <p className="text-white text-center py-8">No forums found. Be the first to create a forum to start discussions.</p>
+                ) : (
+                    <ul className="space-y-4">
+                        {filtered.map((forum) => (
+                            <div key={forum.id} className="flex justify-center">
+                                <li className="w-full border border-gray-600 bg-gray-800 rounded-lg p-4 shadow-md hover:bg-gray-750 transition">
+                                    <Link href={`/creator-main-page/forums/view-forums/${forum.id}`} className="block">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <h2 className="text-xl font-semibold text-white">{forum.title}</h2>
+                                            {forum.isCreator && (
+                                                <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>
+                                            )}
+                                        </div>
+                                    </Link>
+                                    <div className="flex items-center justify-between border-t border-gray-600 pt-2">
+                                        <p className="text-white">{forum.description}</p>
+                                        <div className="flex items-center gap-3">
+                                            <button 
+                                            onClick={() => handleToggleLike(forum.id, !!forum.liked)} 
                                             disabled={!!liking[forum.id]}
-                                            className={`px-3 py-1 rounded ${forum.liked ? 'bg-blue-600 text-white' : 'bg-gray-100 text-black'} ${liking[forum.id] ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                                            className={`px-3 py-1 rounded ${forum.liked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} ${liking[forum.id] ? 'opacity-60 cursor-not-allowed' : ''}`}>
                                             {liking[forum.id] ? (
-                                              <span className="inline-flex items-center gap-2">
-                                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                <span className="text-sm">Processing</span>
-                                              </span>
-                                            ) : forum.liked ? 'Liked' : 'Like'}
-                                        </button> 
-                                        <span className="text-sm text-black">{use7Day ? (forum.weeklyLikes || 0) + ' likes (7d)' : (forum.totalLikes || 0) + ' likes'}</span>
+                                                <span className="inline-flex items-center gap-2">
+                                                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        <span className="text-sm">Processing</span>
+                                                    </span>
+                                                    ) : forum.liked ? 'Liked' : 'Like'}
+                                                </button> 
+                                            <span className="text-sm text-white">{use7Day ? (forum.weeklyLikes || 0) + ' likes (7d)' : (forum.totalLikes || 0) + ' likes'}</span>
+                                        </div>
                                     </div>
-                                </div>
-                            </li>
-                        </div>
-                    ))}
-                </ul>
-            )}
+                                </li>
+                            </div>
+                        ))}
+                    </ul>
+                )}
+            </div>
         </div>
     )
 }
