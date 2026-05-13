@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [isCreator, setIsCreator] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -43,6 +44,7 @@ export default function RegisterPage() {
         uid,
         email: userCred.user.email,
         displayName: displayName || null,
+        isCreator,
         createdAt: serverTimestamp(),
       })
       setSuccess('Account created successfully. Redirecting to login…')
@@ -101,6 +103,17 @@ export default function RegisterPage() {
             className="w-full px-3 py-2 rounded border border-black bg-white text-black focus:outline-none"
           />
 
+          <div className="flex items-center gap-2 py-2">
+            <input
+              type="checkbox"
+              id="creator-checkbox"
+              checked={isCreator}
+              onChange={(e) => setIsCreator(e.target.checked)}
+              className="w-4 h-4 cursor-pointer accent-black"
+            />
+            <label htmlFor="creator-checkbox" className="text-sm font-medium cursor-pointer text-black">Register as a creator</label>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -126,4 +139,3 @@ export default function RegisterPage() {
     </div>
   )
 }
-// ...existing code...

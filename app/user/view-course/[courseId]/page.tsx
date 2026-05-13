@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
-import { db } from '../../../lib/ClientApp'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth, db } from '../../../lib/ClientApp'
 
 export default function UserViewCoursePage() {
   const params = useParams()
@@ -15,6 +16,10 @@ export default function UserViewCoursePage() {
   const [rating, setRating] = useState(0)
   const [selectedVideoIndex, setSelectedVideoIndex] = useState(0)
   const [ratingSubmitted, setRatingSubmitted] = useState(false)
+  const [isPurchased, setIsPurchased] = useState(false)
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [pendingVideoIndex, setPendingVideoIndex] = useState<number | null>(null)
+  const [userUid, setUserUid] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -34,6 +39,26 @@ export default function UserViewCoursePage() {
     fetchCourse()
   }, [courseId])
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUserUid(user.uid)
+        if (courseId) {
+          try {
+            const userRef = doc(db, 'users', user.uid)
+            const userSnap = await getDoc(userRef)
+            if (userSnap.exists() && userSnap.data().purchasedCourses?.includes(courseId)) {
+              setIsPurchased(true)
+            }
+          } catch (error) {
+            console.error('Error fetching user purchase status:', error)
+          }
+        }
+      }
+    })
+    return () => unsubscribe()
+  }, [courseId])
+
   const handleRatingSubmit = async (newRating: number) => {
     setRating(newRating)
     setRatingSubmitted(true)
@@ -51,6 +76,30 @@ export default function UserViewCoursePage() {
       }
     } catch (error) {
       console.error('Error submitting rating:', error)
+    }
+  }
+
+  const handleVideoSelect = (index: number) => {
+    if (index === 0 || isPurchased) {
+      setSelectedVideoIndex(index)
+    } else {
+      setPendingVideoIndex(index)
+      setShowPurchaseModal(true)
+    }
+  }
+
+  const handleConfirmPurchase = async () => {
+    if (userUid && courseId) {
+      const userRef = doc(db, 'users', userUid)
+      await updateDoc(userRef, {
+        purchasedCourses: arrayUnion(courseId)
+      }).catch((err) => console.error('Error purchasing course:', err))
+    }
+    setIsPurchased(true)
+    setShowPurchaseModal(false)
+    if (pendingVideoIndex !== null) {
+      setSelectedVideoIndex(pendingVideoIndex)
+      setPendingVideoIndex(null)
     }
   }
 
@@ -108,14 +157,17 @@ export default function UserViewCoursePage() {
                   {course.videoUrls.map((video: any, index: number) => (
                     <button
                       key={index}
-                      onClick={() => setSelectedVideoIndex(index)}
+                      onClick={() => handleVideoSelect(index)}
                       className={`p-3 rounded text-left transition ${
                         selectedVideoIndex === index
                           ? 'bg-black text-white'
                           : 'bg-white text-black border border-gray-300 hover:bg-gray-100'
                       }`}
                     >
-                      <p className="font-medium text-sm">{video.title || `Video ${index + 1}`}</p>
+                      <p className="font-medium text-sm flex items-center justify-between">
+                        <span>{video.title || `Video ${index + 1}`}</span>
+                        {!isPurchased && index > 0 && <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">Locked</span>}
+                      </p>
                     </button>
                   ))}
                 </div>
@@ -148,6 +200,35 @@ export default function UserViewCoursePage() {
         </div>
         
       </div>
+
+      {/* Purchase Modal */}
+      {showPurchaseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center flex flex-col gap-4">
+            <h2 className="text-2xl font-bold">Purchase Required</h2>
+            <p className="text-gray-600">
+              You need to purchase this course to view the rest of the videos. Do you want to purchase it now?
+            </p>
+            <div className="flex gap-4 justify-center mt-4">
+              <button
+                onClick={() => {
+                  setShowPurchaseModal(false)
+                  setPendingVideoIndex(null)
+                }}
+                className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmPurchase}
+                className="px-4 py-2 bg-black text-white rounded hover:opacity-90 transition"
+              >
+                Confirm Purchase
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

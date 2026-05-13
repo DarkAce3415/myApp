@@ -43,13 +43,21 @@ export default function MainPage() {
       <div className="w-full max-w-5xl flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Available Courses</h1>
-          <button
-            onClick={() => router.push('/user/account')}
-            className="px-6 py-2 border border-black rounded bg-black text-white font-semibold hover:opacity-90 transition"
-            aria-label="Open account page"
-          >
-            Open account
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push('/user/owned-courses')}
+              className="px-6 py-2 border border-black rounded bg-white text-black font-semibold hover:bg-gray-100 transition"
+            >
+              My Courses
+            </button>
+            <button
+              onClick={() => router.push('/user/account')}
+              className="px-6 py-2 border border-black rounded bg-black text-white font-semibold hover:opacity-90 transition"
+              aria-label="Open account page"
+            >
+              Open account
+            </button>
+          </div>
         </div>
 
         {loading ? (

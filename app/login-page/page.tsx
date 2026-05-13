@@ -28,8 +28,8 @@ export default function LoginPage() {
     try {
       const userCred = await signInWithEmailAndPassword(auth, email, password)
       if (userCred?.user) {
-        const creatorDoc = await getDoc(doc(db, 'creators', userCred.user.uid))
-        if (creatorDoc.exists()) {
+        const userDoc = await getDoc(doc(db, 'users', userCred.user.uid))
+        if (userDoc.exists() && userDoc.data().isCreator === true) {
           router.push('/creator-main-page')
         } else {
           router.push('/user')
