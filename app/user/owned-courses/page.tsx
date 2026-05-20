@@ -19,7 +19,9 @@ export default function OwnedCoursesPage() {
           const userSnap = await getDoc(userRef)
           
           if (userSnap.exists()) {
-            const purchasedCourseIds = userSnap.data().purchasedCourses || []
+            const userData = userSnap.data()
+            const purchasedCourseIds = userData.purchasedCourses || []
+            const courseProgress = userData.courseProgress || {}
             
             if (purchasedCourseIds.length > 0) {
               const coursesList: any[] = []
@@ -30,6 +32,10 @@ export default function OwnedCoursesPage() {
                 const querySnapshot = await getDocs(q)
                 querySnapshot.forEach((doc) => {
                   const data = doc.data()
+                  const watchedCount = courseProgress[doc.id]?.length || 0
+                  const totalVideos = data.videoUrls?.length || 0
+                  const progress = totalVideos > 0 ? (watchedCount / totalVideos) * 100 : 0
+
                   coursesList.push({
                     id: doc.id,
                     title: data.title || 'Untitled Course',
@@ -38,6 +44,7 @@ export default function OwnedCoursesPage() {
                     videoUrls: data.videoUrls || [],
                     ratings: data.ratings || [],
                     courseThumbnail: data.courseThumbnail || null,
+                    progress: progress,
                   })
                 })
               }
@@ -104,6 +111,16 @@ export default function OwnedCoursesPage() {
                   <h2 className="text-xl font-bold mt-2">{course.title}</h2>
                   <p className="text-xs text-gray-500 bg-gray-100 rounded px-2 py-1 w-fit">{course.category}</p>
                   <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
+                  
+                  <div className="mt-auto pt-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium text-gray-600">Progress</span>
+                      <span className="text-sm font-semibold text-black">{Math.round(course.progress)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div className="bg-black h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${course.progress}%` }}></div>
+                    </div>
+                  </div>
                 </div>
               )
             })}

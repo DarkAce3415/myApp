@@ -20,6 +20,7 @@ export default function CreatorUploadPage() {
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
   const [courseThumbnail, setCourseThumbnail] = useState<string | null>(null)
+  const [price, setPrice] = useState<number | ''>(50000)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,8 +36,8 @@ export default function CreatorUploadPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (videos.length === 0 || !description.trim() || !title.trim() || !category) {
-      setMessage('Please fill in all fields and upload at least one video.')
+    if (videos.length === 0 || !description.trim() || !title.trim() || !category || !price || price < 50000) {
+      setMessage('Please fill in all fields, upload at least one video, and set a price of at least 50,000.')
       return
     }
     if (!auth.currentUser) {
@@ -55,6 +56,7 @@ export default function CreatorUploadPage() {
         description: description.trim(),
         videoUrls: videos,
         courseThumbnail: courseThumbnail,
+        price: Number(price),
         createdAt: serverTimestamp(),
       })
 
@@ -64,6 +66,7 @@ export default function CreatorUploadPage() {
       setTitle('')
       setCategory('')
       setCourseThumbnail(null)
+      setPrice(50000)
       router.push('/creator-main-page') 
       setVideos([]);
     } catch (err: any) {
@@ -138,6 +141,17 @@ export default function CreatorUploadPage() {
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
+
+          <label className="block text-sm font-medium">Price (IDR)</label>
+          <input
+            type="number"
+            value={price}
+            onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
+            className="w-full px-3 py-2 rounded border border-gray-600 bg-gray-700 text-white focus:outline-none focus:border-white"
+            placeholder="Enter course price (min. 50000)"
+            min="50000"
+            required
+          />
 
           <label className="block text-sm font-medium">Course Thumbnail</label>
           <div className="flex items-center gap-4 mb-4">

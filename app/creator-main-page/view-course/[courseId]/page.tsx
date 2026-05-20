@@ -25,6 +25,7 @@ export default function EditCoursePage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [category, setCategory] = useState('');
+  const [price, setPrice] = useState<number | ''>('');
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -42,6 +43,7 @@ export default function EditCoursePage() {
           setDescription(data.description || '')
           setCategory(data.category || '');
           setCourseThumbnail(data.courseThumbnail || null);
+          setPrice(data.price || '');
         }
       } catch (error) {
         console.error('Error fetching course:', error)
@@ -54,6 +56,10 @@ export default function EditCoursePage() {
 
   const handleUpdate = useCallback(async () => {
     if (!courseId) return
+    if (!price || Number(price) < 50000) {
+      alert('Price must be at least 50,000.');
+      return;
+    }
     try {
       const docRef = doc(db, 'courses', courseId)
       await updateDoc(docRef, {
@@ -62,6 +68,7 @@ export default function EditCoursePage() {
         videoUrls: videos, 
         courseThumbnail: courseThumbnail || null, 
         category,
+        price: Number(price),
       })
       alert('Course updated successfully')
       router.push('/creator-main-page')
@@ -69,7 +76,7 @@ export default function EditCoursePage() {
       console.error('Error updating course:', error)
       alert('Failed to update course')
     }
-  }, [courseId, title, description, videos, courseThumbnail, router, category])
+  }, [courseId, title, description, videos, courseThumbnail, router, category, price])
 
   const handleDeleteCourse = useCallback(async () => {
     if (!courseId) return;
@@ -179,6 +186,18 @@ export default function EditCoursePage() {
             ))}
           </select>
         </div>
+        <div className="flex flex-col gap-2">
+          <label className="font-semibold">Price (IDR)</label>
+          <input
+            type="number"
+            value={price}
+            onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
+            className="border border-gray-600 rounded p-2 bg-gray-800 text-white focus:outline-none focus:border-white"
+            placeholder="Course Price (min. 50000)"
+            min="50000"
+          />
+        </div>
+
         <div className="flex flex-col gap-2">
           <label className="font-semibold">Course Thumbnail</label>
           <div className="flex items-center gap-4">
