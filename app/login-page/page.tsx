@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { auth, db } from '../lib/ClientApp'
 import { getDoc, doc } from 'firebase/firestore'
 
@@ -44,6 +44,23 @@ export default function LoginPage() {
     }
   }
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setMessage('Please enter your email address above to reset your password.')
+      return
+    }
+    setLoading(true)
+    setMessage(null)
+    try {
+      await sendPasswordResetEmail(auth, email)
+      setMessage('Password reset email sent! Please check your inbox.')
+    } catch (err: any) {
+      setMessage(err?.message || 'Failed to send password reset email.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-white text-black rounded-lg shadow-lg p-8">
@@ -68,6 +85,16 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-3 py-2 rounded border border-black bg-white text-black focus:outline-none"
           />
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-sm text-gray-600 hover:text-black hover:underline"
+            >
+              Forgot password?
+            </button>
+          </div>
 
           <button
             type="submit"
