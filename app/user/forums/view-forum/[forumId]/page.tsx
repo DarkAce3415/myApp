@@ -12,6 +12,7 @@ interface ForumData {
   topic: string
   isCreator: boolean
   creatorId: string
+  linkedCourseId?: string
 }
 
 interface Comment {
@@ -51,6 +52,32 @@ export default function UserViewForumPage() {
         }
 
         const forumData = forumDoc.data() as any
+        const linkedCourseId = forumData.linkedCourseId || null
+
+        const uid = auth.currentUser?.uid
+
+        if (linkedCourseId && uid) {
+          let hasAccess = false
+          if (forumData.userId === uid || forumData.creatorId === uid) {
+            hasAccess = true
+          } else {
+            const userDocRef = doc(db, 'users', uid)
+            const userDocSnap = await getDoc(userDocRef)
+            if (userDocSnap.exists()) {
+              const userData = userDocSnap.data()
+              const purchasedCourses = userData.purchasedCourses || []
+              if (purchasedCourses.includes(linkedCourseId)) {
+                hasAccess = true
+              }
+            }
+          }
+
+          if (!hasAccess) {
+            router.push(`/user/view-course/${linkedCourseId}`)
+            return
+          }
+        }
+
         setForum({
           id: forumId,
           title: forumData.title,
@@ -58,13 +85,12 @@ export default function UserViewForumPage() {
           topic: forumData.topic || 'General',
           isCreator: forumData.isCreator || false,
           creatorId: forumData.creatorId || '',
+          linkedCourseId,
         })
 
         // Fetch comments
         const commentsCollection = collection(db, 'forums', forumId, 'comments')
         const commentsSnapshot = await getDocs(commentsCollection)
-
-        const uid = auth.currentUser?.uid
 
         const commentsList = await Promise.all(
           commentsSnapshot.docs.map(async (d) => {
@@ -193,13 +219,14 @@ export default function UserViewForumPage() {
     <div className="min-h-screen bg-white text-black flex flex-col items-center p-6">
       <div className="w-full max-w-2xl">
         <button onClick={() => router.back()} className="mb-4 text-blue-600 hover:text-blue-800">
-          ← Back
+          &larr; Back
         </button>
 
         <div className="bg-white border border-black rounded-lg p-6 mb-6">
           <div className="flex items-center gap-2 mb-2">
             <h1 className="text-3xl font-bold">{forum.title}</h1>
             {forum.isCreator && <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>}
+            {forum.linkedCourseId && <span className="px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">Course Linked</span>}
           </div>
           <p className="text-black mb-2">Topic: {forum.topic}</p>
           <p className="text-black">{forum.description}</p>

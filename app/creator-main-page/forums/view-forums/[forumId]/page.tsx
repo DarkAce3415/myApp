@@ -12,6 +12,8 @@ interface ForumData {
   topic: string
   isCreator: boolean
   creatorId: string
+  linkedCourseId?: string
+  ownsLinkedCourse?: boolean
 }
 
 interface Comment {
@@ -42,7 +44,14 @@ export default function CreatorViewForumPage() {
       if (!forumId) return
 
       try {
-        const forumDoc = await getDoc(doc(db, 'forums', forumId))
+        const uid = auth.currentUser?.uid
+
+        // 1. Fetch forum and comments concurrently
+        const forumDocPromise = getDoc(doc(db, 'forums', forumId))
+        const commentsSnapshotPromise = getDocs(collection(db, 'forums', forumId, 'comments'))
+
+        const [forumDoc, commentsSnapshot] = await Promise.all([forumDocPromise, commentsSnapshotPromise])
+
         if (!forumDoc.exists()) {
           setError('Forum not found')
           setLoading(false)
@@ -50,6 +59,44 @@ export default function CreatorViewForumPage() {
         }
 
         const forumData = forumDoc.data() as any
+        const linkedCourseId = forumData.linkedCourseId || null
+
+        let ownsLinkedCourse = false
+        if (linkedCourseId && uid) {
+          let hasAccess = false
+
+          // 2. Parallelize course and user access checks
+          const courseDocPromise = getDoc(doc(db, 'courses', linkedCourseId))
+          let userDocPromise: Promise<any> = Promise.resolve(null)
+
+          if (forumData.userId === uid || forumData.creatorId === uid) {
+            hasAccess = true
+          } else {
+            userDocPromise = getDoc(doc(db, 'users', uid))
+          }
+
+          const [courseDocSnap, userDocSnap] = await Promise.all([courseDocPromise, userDocPromise])
+
+          if (userDocSnap && userDocSnap.exists()) {
+            const userData = userDocSnap.data()
+            const purchasedCourses = userData.purchasedCourses || []
+            if (purchasedCourses.includes(linkedCourseId)) {
+              hasAccess = true
+            }
+          }
+
+          if (courseDocSnap.exists()) {
+            if (courseDocSnap.data().creatorId === uid) {
+              ownsLinkedCourse = true
+            }
+          }
+
+          if (!hasAccess) {
+            router.push(`/user/view-course/${linkedCourseId}`)
+            return
+          }
+        }
+
         setForum({
           id: forumId,
           title: forumData.title,
@@ -57,12 +104,9 @@ export default function CreatorViewForumPage() {
           topic: forumData.topic || 'General',
           isCreator: forumData.isCreator || false,
           creatorId: forumData.creatorId || '',
+          linkedCourseId,
+          ownsLinkedCourse,
         })
-
-        const commentsCollection = collection(db, 'forums', forumId, 'comments')
-        const commentsSnapshot = await getDocs(commentsCollection)
-
-        const uid = auth.currentUser?.uid
 
         const commentsList = await Promise.all(
           commentsSnapshot.docs.map(async (d) => {
@@ -98,6 +142,11 @@ export default function CreatorViewForumPage() {
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newComment.trim() || !forumId) return
+
+    if (forum?.linkedCourseId && !forum?.ownsLinkedCourse) {
+      alert('Creators cannot comment on linked course forums unless they created the course.')
+      return
+    }
 
     const uid = auth.currentUser?.uid
     if (!uid) {
@@ -191,13 +240,14 @@ export default function CreatorViewForumPage() {
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-6">
       <div className="w-full max-w-2xl">
         <button onClick={() => router.back()} className="mb-4 text-blue-400 hover:text-blue-300">
-          ← Back
+          &larr; Back
         </button>
 
         <div className="bg-gray-800 border border-gray-600 rounded-lg p-6 mb-6">
           <div className="flex items-center gap-2 mb-2">
             <h1 className="text-3xl font-bold">{forum.title}</h1>
             {forum.isCreator && <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>}
+            {forum.linkedCourseId && <span className="px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">Course Linked</span>}
           </div>
           <p className="text-white mb-2">Topic: {forum.topic}</p>
           <p className="text-white">{forum.description}</p>
@@ -206,23 +256,29 @@ export default function CreatorViewForumPage() {
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-4">Comments ({comments.length})</h2>
 
-          <form onSubmit={handleAddComment} className="mb-6 bg-gray-800 p-4 rounded-lg border border-gray-600">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Share your thoughts on this forum..."
-              className="w-full p-3 border border-gray-600 rounded mb-3 bg-gray-700 text-white"
-              rows={3}
-              required
-            ></textarea>
-            <button
-              type="submit"
-              disabled={submitting || !newComment.trim()}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-60"
-            >
-              {submitting ? 'Posting...' : 'Post Comment'}
-            </button>
-          </form>
+          {forum.linkedCourseId && !forum.ownsLinkedCourse ? (
+            <div className="mb-6 bg-gray-800 p-4 rounded-lg border border-gray-600 text-center text-gray-400 italic">
+              As a creator, you cannot comment on forums linked to a course unless you created it.
+            </div>
+          ) : (
+            <form onSubmit={handleAddComment} className="mb-6 bg-gray-800 p-4 rounded-lg border border-gray-600">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Share your thoughts on this forum..."
+                className="w-full p-3 border border-gray-600 rounded mb-3 bg-gray-700 text-white"
+                rows={3}
+                required
+              ></textarea>
+              <button
+                type="submit"
+                disabled={submitting || !newComment.trim()}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-60"
+              >
+                {submitting ? 'Posting...' : 'Post Comment'}
+              </button>
+            </form>
+          )}
 
           <div className="mb-4 flex gap-4">
             <button

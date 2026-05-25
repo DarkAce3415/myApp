@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '../../../lib/ClientApp'; 
-import { collection, addDoc, serverTimestamp, setDoc, doc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, setDoc, doc, increment, getDocs, query, where } from 'firebase/firestore';
 
 interface ForumFormData {
   title: string;
@@ -11,6 +11,7 @@ interface ForumFormData {
   topic?: string;
   userId: string;
   isCreator: boolean;
+  linkedCourseId?: string;
 }
 
 export default function CreateForumPage() {
@@ -21,6 +22,7 @@ export default function CreateForumPage() {
     topic: 'Machine Learning',
     userId: auth.currentUser?.uid || '',
     isCreator: true,
+    linkedCourseId: '',
   });
   // AI-related topics only
   const [topics] = useState<string[]>([
@@ -35,6 +37,29 @@ export default function CreateForumPage() {
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      
+      try {
+        // Fetch courses created by the current user
+        const q = query(collection(db, 'courses'), where('creatorId', '==', uid));
+        const querySnapshot = await getDocs(q);
+        const coursesList = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          title: doc.data().title || `Course ${doc.id}`
+        }));
+        setCourses(coursesList);
+      } catch (err) {
+        console.error('Failed to fetch courses:', err);
+      }
+    };
+    
+    fetchCourses();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target as HTMLInputElement;
@@ -52,10 +77,16 @@ export default function CreateForumPage() {
     setError(null);
 
     try {
-      await addDoc(collection(db, 'forums'), {
+      const forumPayload = {
         ...formData,
         createdAt: serverTimestamp(),
-      });
+      };
+      
+      if (!forumPayload.linkedCourseId?.trim()) {
+        delete forumPayload.linkedCourseId;
+      }
+
+      await addDoc(collection(db, 'forums'), forumPayload);
 
       // Upsert topic into topics collection for normalization & fast reads
       const topicId = slugify(formData.topic || 'general') || 'general';
@@ -76,6 +107,9 @@ export default function CreateForumPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-gray-800 rounded-lg shadow-lg p-8">
+        <button onClick={() => router.back()} className="mb-4 text-blue-400 hover:text-blue-300">
+          &larr; Back
+        </button>
         <h1 className="text-2xl font-bold mb-4 text-center">Create New Forum</h1>
         <form onSubmit={handleSubmit} className="bg-gray-800 rounded px-8 pt-6 pb-8 mb-4 space-y-4">
           <div className="mb-4">
@@ -106,6 +140,24 @@ export default function CreateForumPage() {
             >
               {topics.map((t) => (
                 <option value={t} key={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="linkedCourseId" className="block text-white text-sm font-bold mb-2">
+              Linked Course (Optional):
+            </label>
+            <select
+              id="linkedCourseId"
+              name="linkedCourseId"
+              value={formData.linkedCourseId}
+              onChange={handleChange}
+              className="shadow appearance-none border border-gray-600 bg-gray-700 text-white rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline"
+            >
+              <option value="">None (Public Forum)</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>{course.title}</option>
               ))}
             </select>
           </div>

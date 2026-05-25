@@ -164,7 +164,6 @@ export default function UserViewCoursePage() {
         })
       });
 
-      // Safely parse the response, as it might be an HTML error page (e.g., 404 or 500)
       let data;
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") !== -1) {
@@ -199,24 +198,37 @@ export default function UserViewCoursePage() {
   if (loading) return <div className="p-6 flex justify-center">Loading...</div>
   if (!course) return <div className="p-6 flex justify-center">Course not found</div>
 
+  const lessons = course.lessons || course.videoUrls || [];
+
   return (
     <div className="min-h-screen bg-white text-black flex flex-col items-center p-6">
       <div className="w-full max-w-4xl flex flex-col gap-6">
-        <button 
-          onClick={() => router.push('/user')}
-          className="w-fit px-4 py-2 border border-black rounded hover:bg-gray-100 transition"
-        >
-          Back to Courses
-        </button>
+        <div className="flex justify-between items-center">
+          <button 
+            onClick={() => router.push('/user')}
+            className="w-fit px-4 py-2 border border-black rounded hover:bg-gray-100 transition"
+          >
+            Back to Courses
+          </button>
+          
+          {!isPurchased && (
+            <button
+              onClick={() => setShowPurchaseModal(true)}
+              className="px-6 py-2 bg-black text-white font-semibold rounded hover:bg-gray-800 transition shadow-md"
+            >
+              Purchase Course
+            </button>
+          )}
+        </div>
 
         <h1 className="text-3xl font-bold">{course.title}</h1>
         
         <div className="w-full flex gap-6">
           <div className="flex-grow">
             <div className="w-full aspect-video bg-black rounded overflow-hidden flex items-center justify-center shadow-lg">
-              {course.videoUrls && course.videoUrls.length > 0 && course.videoUrls[selectedVideoIndex]?.url ? (
+              {lessons.length > 0 && lessons[selectedVideoIndex]?.url ? (
                 <video
-                  src={course.videoUrls[selectedVideoIndex].url}
+                  src={lessons[selectedVideoIndex].url}
                   className="w-full h-full"
                   controls
                   controlsList="nodownload"
@@ -234,22 +246,22 @@ export default function UserViewCoursePage() {
                 <span className="text-white">No video available</span>
               )}
             </div>
-            {course.videoUrls && course.videoUrls.length > 0 && (
-              <p className="text-gray-600 mt-2">{course.videoUrls[selectedVideoIndex]?.title || 'Untitled Video'}</p>
+            {lessons.length > 0 && (
+              <p className="text-gray-600 mt-2">{lessons[selectedVideoIndex]?.title || 'Untitled Video'}</p>
             )}
-            {course.videoUrls && course.videoUrls.length > 0 && course.videoUrls[selectedVideoIndex]?.description && (
-              <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{course.videoUrls[selectedVideoIndex].description}</p>
+            {lessons.length > 0 && lessons[selectedVideoIndex]?.description && (
+              <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{lessons[selectedVideoIndex].description}</p>
             )}
           </div>
 
           {/* Video Selector */}
-          {course.videoUrls && course.videoUrls.length > 0 && (
+          {lessons.length > 0 && (
             <div className="w-80 bg-gray-50 rounded-xl p-5 border border-gray-200 flex flex-col gap-4 shadow-sm shrink-0">
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-xl">Course Content</h3>
                   <span className="text-sm font-medium text-gray-500">
-                    {watchedVideos.length}/{course.videoUrls.length} Watched
+                    {watchedVideos.length}/{lessons.length} Watched
                   </span>
                 </div>
                 
@@ -257,12 +269,12 @@ export default function UserViewCoursePage() {
                 <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden mb-2">
                   <div 
                     className="bg-black h-2 rounded-full transition-all duration-500 ease-out" 
-                    style={{ width: `${(watchedVideos.length / course.videoUrls.length) * 100}%` }}
+                    style={{ width: `${(watchedVideos.length / lessons.length) * 100}%` }}
                   ></div>
                 </div>
 
                 <div className="flex flex-col gap-3 max-h-[450px] overflow-y-auto pr-1">
-                  {course.videoUrls.map((video: any, index: number) => (
+                  {lessons.map((lesson: any, index: number) => (
                     <button
                       key={index}
                       onClick={() => handleVideoSelect(index)}
@@ -285,7 +297,7 @@ export default function UserViewCoursePage() {
                               <span className="text-sm font-semibold">{index + 1}</span>
                             )}
                           </div>
-                          <span className="font-medium text-sm line-clamp-2">{video.title || `Video ${index + 1}`}</span>
+                          <span className="font-medium text-sm line-clamp-2">{lesson.title || `Lesson ${index + 1}`}</span>
                         </div>
                         {!isPurchased && index > 0 && (
                           <svg className={`w-5 h-5 shrink-0 ml-2 ${selectedVideoIndex === index ? 'text-white/70' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>

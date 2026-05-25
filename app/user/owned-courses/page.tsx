@@ -33,7 +33,8 @@ export default function OwnedCoursesPage() {
                 querySnapshot.forEach((doc) => {
                   const data = doc.data()
                   const watchedCount = courseProgress[doc.id]?.length || 0
-                  const totalVideos = data.videoUrls?.length || 0
+                  const lessons = data.lessons || data.videoUrls || []
+                  const totalVideos = lessons.length
                   const progress = totalVideos > 0 ? (watchedCount / totalVideos) * 100 : 0
 
                   coursesList.push({
@@ -41,7 +42,7 @@ export default function OwnedCoursesPage() {
                     title: data.title || 'Untitled Course',
                     description: data.description || 'No description available.',
                     category: data.category || 'General',
-                    videoUrls: data.videoUrls || [],
+                    lessons: lessons,
                     ratings: data.ratings || [],
                     courseThumbnail: data.courseThumbnail || null,
                     progress: progress,

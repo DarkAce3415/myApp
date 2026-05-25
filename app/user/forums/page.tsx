@@ -15,6 +15,7 @@ interface Forum {
   totalLikes?: number
   liked?: boolean
   isCreator?: boolean
+  linkedCourseId?: string
 }
 
 export default function UserForumsPage() {
@@ -76,6 +77,7 @@ export default function UserForumsPage() {
               totalLikes,
               liked,
               isCreator: data.isCreator || false,
+              linkedCourseId: data.linkedCourseId || null,
             } as Forum
           })
         )
@@ -202,6 +204,9 @@ export default function UserForumsPage() {
                       <h2 className="text-2xl font-semibold text-black hover:text-black">{forum.title}</h2>
                       {forum.isCreator && (
                           <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>
+                      )}
+                      {forum.linkedCourseId && (
+                          <span className="px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">Course Linked</span>
                       )}
                     </div>
                     <div className="border-t border-gray-200 pt-3">
