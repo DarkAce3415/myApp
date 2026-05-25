@@ -25,6 +25,7 @@ export default function MainPage() {
             videoUrls: data.videoUrls || [],
             ratings: data.ratings || [],
             courseThumbnail: data.courseThumbnail || null,
+            price: data.price || 0,
           }
         })
         setCourses(coursesList)
@@ -126,10 +127,15 @@ export default function MainPage() {
                     <p className="text-xs text-gray-500 bg-gray-100 rounded px-2 py-1 w-fit">
                       {course.category}
                     </p>
-                    <div className="flex items-center gap-1">
-                      <span className="text-yellow-400 text-lg">★</span>
-                      <span className="font-semibold">{averageRating.toFixed(1)}</span>
-                      <span className="text-gray-500 text-sm">({course.ratings?.length || 0})</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="font-semibold">{averageRating.toFixed(1)}</span>
+                        <span className="text-gray-500 text-sm">({course.ratings?.length || 0})</span>
+                      </div>
+                      <span className="font-semibold text-black">
+                        {course.price ? `IDR ${course.price.toLocaleString()}` : 'Free'}
+                      </span>
                     </div>
                     <p className="text-sm text-gray-600 line-clamp-2">
                       {course.description}

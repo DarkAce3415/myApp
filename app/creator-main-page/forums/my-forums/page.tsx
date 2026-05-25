@@ -15,6 +15,7 @@ interface Forum {
   totalLikes?: number
   liked?: boolean
   userId?: string
+  linkedCourseId?: string
 }
 
 export default function CreatorMyForumsPage() {
@@ -68,6 +69,7 @@ export default function CreatorMyForumsPage() {
               totalLikes,
               liked,
               userId: data.userId,
+              linkedCourseId: data.linkedCourseId || null,
             } as Forum
           })
         )
@@ -164,7 +166,12 @@ export default function CreatorMyForumsPage() {
                     href={`/creator-main-page/forums/view-forums/${forum.id}`}
                     className="flex-1"
                   >
-                    <h2 className="text-2xl font-semibold text-white hover:text-gray-300 mb-2">{forum.title}</h2>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h2 className="text-2xl font-semibold text-white hover:text-gray-300">{forum.title}</h2>
+                      {forum.linkedCourseId && (
+                        <span className="px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">Course Linked</span>
+                      )}
+                    </div>
                     <div className="border-t border-gray-600 pt-3">
                       <p className="text-white">{forum.description}</p>
                     </div>

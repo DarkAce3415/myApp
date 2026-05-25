@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { auth, db } from '../lib/ClientApp'
 import { getDoc, doc } from 'firebase/firestore'
@@ -13,6 +13,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectUrl = searchParams.get('redirect')
     
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,7 +34,7 @@ export default function LoginPage() {
         if (userDoc.exists() && userDoc.data().isCreator === true) {
           router.push('/creator-main-page')
         } else {
-          router.push('/user')
+          router.push(redirectUrl || '/user')
         }
         return
       }
