@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, db } from '../../../lib/ClientApp'
 
@@ -49,9 +49,19 @@ export default function UserViewCoursePage() {
           try {
             const userRef = doc(db, 'users', user.uid)
             const userSnap = await getDoc(userRef)
+            
+            // Check enrollment in the course subcollection
+            const enrollmentRef = doc(db, 'courses', courseId, 'enrollments', user.uid)
+            const enrollmentSnap = await getDoc(enrollmentRef)
+            
+            if (enrollmentSnap.exists()) {
+              setIsPurchased(true) // Enrolled
+            }
+
             if (userSnap.exists()) {
               const userData = userSnap.data()
-              if (userData.purchasedCourses?.includes(courseId)) {
+              // Fallback for older purchases before enrollments collection was added
+              if (!enrollmentSnap.exists() && userData.purchasedCourses?.includes(courseId)) {
                 setIsPurchased(true)
               }
               if (userData.courseProgress && userData.courseProgress[courseId]) {
@@ -83,6 +93,18 @@ export default function UserViewCoursePage() {
       const userRef = doc(db, 'users', userUid);
       await updateDoc(userRef, {
         purchasedCourses: arrayUnion(courseId)
+      });
+      const courseRef = doc(db, 'courses', courseId);
+      await updateDoc(courseRef, {
+        purchasedBy: arrayUnion(userUid)
+      });
+
+      // Add user to the enrollment collection in the course document
+      const enrollmentRef = doc(db, 'courses', courseId, 'enrollments', userUid);
+      await setDoc(enrollmentRef, {
+        userId: userUid,
+        enrolledAt: new Date().toISOString(),
+        paymentStatus: 'settled'
       });
     } catch (error) {
       console.error('Error fallback updating purchased courses:', error);
@@ -205,7 +227,7 @@ export default function UserViewCoursePage() {
       <div className="w-full max-w-4xl flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <button 
-            onClick={() => router.push('/user')}
+            onClick={() => router.push('/user/owned-courses')}
             className="w-fit px-4 py-2 border border-black rounded hover:bg-gray-100 transition"
           >
             Back to Courses
@@ -216,7 +238,7 @@ export default function UserViewCoursePage() {
               onClick={() => setShowPurchaseModal(true)}
               className="px-6 py-2 bg-black text-white font-semibold rounded hover:bg-gray-800 transition shadow-md"
             >
-              Purchase Course
+              Enroll in Course
             </button>
           )}
         </div>
@@ -340,9 +362,9 @@ export default function UserViewCoursePage() {
       {showPurchaseModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center flex flex-col gap-4">
-            <h2 className="text-2xl font-bold">Purchase Required</h2>
+            <h2 className="text-2xl font-bold">Enrollment Required</h2>
             <p className="text-gray-600">
-              You need to purchase this course to view the rest of the videos. The price is IDR {course.price?.toLocaleString() || '50,000'}. Do you want to proceed to payment?
+              You need to enroll in this course to view the rest of the videos. The price is IDR {course.price?.toLocaleString() || '50,000'}. Do you want to proceed to payment?
             </p>
             <div className="flex gap-4 justify-center mt-4">
               <button

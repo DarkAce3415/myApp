@@ -73,7 +73,7 @@ export default function OwnedCoursesPage() {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">My Owned Courses</h1>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/user')}
             className="px-6 py-2 border border-black rounded bg-white text-black font-semibold hover:bg-gray-100 transition"
           >
             Back

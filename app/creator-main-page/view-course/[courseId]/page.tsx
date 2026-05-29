@@ -13,6 +13,13 @@ interface LessonData {
   url?: string;
 }
 
+interface Student {
+  id: string
+  username: string
+  email: string
+  profilePicture?: string
+}
+
 export default function EditCoursePage() {
   const router = useRouter()
   const params = useParams()
@@ -26,6 +33,7 @@ export default function EditCoursePage() {
   const [message, setMessage] = useState<string | null>(null)
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState<number | ''>('');
+  const [students, setStudents] = useState<Student[]>([])
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -47,6 +55,27 @@ export default function EditCoursePage() {
           setCategory(data.category || '');
           setCourseThumbnail(data.courseThumbnail || null);
           setPrice(data.price || '');
+
+          const purchasedBy: string[] = data.purchasedBy || []
+          if (purchasedBy.length > 0) {
+            const studentsData = await Promise.all(
+              purchasedBy.map(async (uid) => {
+                const userRef = doc(db, 'users', uid)
+                const userSnap = await getDoc(userRef)
+                if (userSnap.exists()) {
+                  const userData = userSnap.data()
+                  return {
+                    id: uid,
+                    username: userData.username || 'Anonymous User',
+                    email: userData.email || 'No email provided',
+                    profilePicture: userData.profilePicture || ''
+                  }
+                }
+                return { id: uid, username: 'Unknown User', email: 'N/A' }
+              })
+            )
+            setStudents(studentsData)
+          }
         }
       } catch (error) {
         console.error('Error fetching course:', error)
@@ -318,6 +347,37 @@ export default function EditCoursePage() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="font-semibold">Enrolled Students ({students.length})</label>
+          <div className="bg-gray-800 rounded p-4 border border-gray-600">
+            {students.length === 0 ? (
+               <p className="text-gray-400">No students are currently enrolled in this course.</p>
+            ) : (
+              <ul className="divide-y divide-gray-700 max-h-64 overflow-y-auto pr-2">
+                {students.map((student) => (
+                  <li key={student.id} className="py-3 flex items-center gap-4">
+                    {student.profilePicture ? (
+                      <img 
+                        src={student.profilePicture} 
+                        alt={student.username} 
+                        className="w-10 h-10 rounded-full object-cover border border-gray-600 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-gray-300 font-bold shrink-0">
+                        {student.username.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-gray-100">{student.username}</span>
+                      <span className="text-xs text-gray-400">{student.email}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-4">

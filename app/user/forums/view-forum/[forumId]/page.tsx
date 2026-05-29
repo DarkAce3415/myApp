@@ -18,6 +18,7 @@ interface ForumData {
 interface Comment {
   id: string
   userId: string
+  userName: string
   text: string
   createdAt: Date
   likes: number
@@ -101,9 +102,16 @@ export default function UserViewForumPage() {
               liked = likeDoc.exists()
             }
 
+            let userName = commentData.userName
+            if (!userName && commentData.userId) {
+              const userDoc = await getDoc(doc(db, 'users', commentData.userId))
+              userName = userDoc.exists() ? (userDoc.data().username || 'Anonymous') : 'Anonymous'
+            }
+
             return {
               id: d.id,
               userId: commentData.userId,
+              userName: userName || 'Anonymous',
               text: commentData.text,
               createdAt: commentData.createdAt?.toDate() || new Date(),
               likes: commentData.likes || 0,
@@ -135,9 +143,13 @@ export default function UserViewForumPage() {
 
     setSubmitting(true)
     try {
+      const userDocRef = await getDoc(doc(db, 'users', uid))
+      const userName = userDocRef.exists() ? (userDocRef.data().username || 'Anonymous') : 'Anonymous'
+
       const commentsCollection = collection(db, 'forums', forumId, 'comments')
       const docRef = await addDoc(commentsCollection, {
         userId: uid,
+        userName,
         text: newComment,
         createdAt: serverTimestamp(),
         likes: 0,
@@ -148,6 +160,7 @@ export default function UserViewForumPage() {
         {
           id: docRef.id,
           userId: uid,
+          userName,
           text: newComment,
           createdAt: new Date(),
           likes: 0,
@@ -274,7 +287,7 @@ export default function UserViewForumPage() {
             ) : (
               sortedComments.map((comment) => (
                 <div key={comment.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm text-black mb-2">User ID: {comment.userId.substring(0, 8)}...</p>
+                  <p className="text-sm text-black mb-2 font-semibold">{comment.userName}</p>
                   <p className="text-black mb-3">{comment.text}</p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-black">{comment.createdAt.toLocaleDateString()} {comment.createdAt.toLocaleTimeString()}</span>

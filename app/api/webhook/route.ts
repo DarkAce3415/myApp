@@ -50,6 +50,16 @@ export async function POST(req: Request) {
           await userRef.update({
             purchasedCourses: FieldValue.arrayUnion(courseId)
           });
+
+          try {
+            const courseRef = db.collection('courses').doc(courseId);
+            await courseRef.update({
+              purchasedBy: FieldValue.arrayUnion(userId)
+            });
+          } catch (e) {
+            console.error('Failed to update course purchasedBy', e);
+          }
+          
           console.log(`Successfully granted course ${courseId} to user ${userId} for invoice ${externalId}`);
         } else {
           console.log(`User ${userId} already owns course ${courseId}. Webhook for ${externalId} ignored.`);

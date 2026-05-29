@@ -13,6 +13,8 @@ export default function AccountPageCreator() {
     const [username, setUsername] = useState('')
     const [photoUrl, setPhotoUrl] = useState('')
     const [totalStudents, setTotalStudents] = useState(0)
+    const [forumsCreatedCount, setForumsCreatedCount] = useState(0)
+    const [totalForumLikes, setTotalForumLikes] = useState(0)
     const [isEditing, setIsEditing] = useState(false)
     const [showResetConfirm, setShowResetConfirm] = useState(false)
 
@@ -44,6 +46,18 @@ export default function AccountPageCreator() {
                         total += courseData.purchasedBy?.length || courseData.studentCount || 0
                     })
                     setTotalStudents(total)
+
+                    // Fetch forums and their total likes
+                    const forumsQuery = query(collection(db, 'forums'), where('userId', '==', user.uid), where('isCreator', '==', true))
+                    const forumsSnapshot = await getDocs(forumsQuery)
+                    setForumsCreatedCount(forumsSnapshot.size)
+                    
+                    const likesPromises = forumsSnapshot.docs.map(forumDoc => 
+                        getDocs(collection(db, 'forums', forumDoc.id, 'likes'))
+                    )
+                    const likesSnapshots = await Promise.all(likesPromises)
+                    const likesSum = likesSnapshots.reduce((acc, snap) => acc + snap.size, 0)
+                    setTotalForumLikes(likesSum)
                 } catch (error) {
                     console.error('Error fetching creator data:', error)
                 }
@@ -117,9 +131,19 @@ export default function AccountPageCreator() {
                     <p className="text-gray-400 text-center">{userEmail}</p>
                 </div>
 
-                <div className="mb-6 bg-gray-700 rounded p-4 text-center">
-                    <p className="text-lg font-semibold">Total Students Reached</p>
-                    <p className="text-3xl font-bold text-white">{totalStudents}</p>
+                <div className="mb-6 grid grid-cols-2 gap-4">
+                    <div className="bg-gray-700 rounded p-4 text-center col-span-2">
+                        <p className="text-lg font-semibold text-gray-300">Total Students Reached</p>
+                        <p className="text-3xl font-bold text-white">{totalStudents}</p>
+                    </div>
+                    <div className="bg-gray-700 rounded p-4 text-center">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Forums Created</p>
+                        <p className="text-2xl font-bold text-white">{forumsCreatedCount}</p>
+                    </div>
+                    <div className="bg-gray-700 rounded p-4 text-center">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Forum Likes</p>
+                        <p className="text-2xl font-bold text-white">{totalForumLikes}</p>
+                    </div>
                 </div>
 
                 {isEditing ? (
