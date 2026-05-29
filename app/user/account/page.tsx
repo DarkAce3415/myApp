@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { auth, db } from '../../lib/ClientApp'
 import { onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { CldUploadWidget } from 'next-cloudinary'
 
 export default function AccountPageUser() {
@@ -14,6 +14,10 @@ export default function AccountPageUser() {
     const [username, setUsername] = useState('')
     const [photoUrl, setPhotoUrl] = useState('')
     const [ownedCoursesCount, setOwnedCoursesCount] = useState(0)
+    const [completedCoursesCount, setCompletedCoursesCount] = useState(0)
+    const [inProgressCoursesCount, setInProgressCoursesCount] = useState(0)
+    const [forumsCreatedCount, setForumsCreatedCount] = useState(0)
+    const [totalForumLikes, setTotalForumLikes] = useState(0)
     const [isEditing, setIsEditing] = useState(false)
     const [showResetConfirm, setShowResetConfirm] = useState(false)
 
@@ -30,11 +34,28 @@ export default function AccountPageUser() {
                         const data = userSnap.data()
                         setUsername(user.displayName || data.username || '')
                         setPhotoUrl(user.photoURL || data.profilePicture || '')
-                        setOwnedCoursesCount(data.purchasedCourses?.length || 0)
+                        
+                        const purchasedCount = data.purchasedCourses?.length || 0
+                        const completedCount = data.completedCourses?.length || 0
+                        setOwnedCoursesCount(purchasedCount)
+                        setCompletedCoursesCount(completedCount)
+                        setInProgressCoursesCount(Math.max(0, purchasedCount - completedCount))
                     } else {
                         setUsername(user.displayName || '')
                         setPhotoUrl(user.photoURL || '')
                     }
+
+                    // Fetch forums and their total likes
+                    const forumsQuery = query(collection(db, 'forums'), where('userId', '==', user.uid))
+                    const forumsSnapshot = await getDocs(forumsQuery)
+                    setForumsCreatedCount(forumsSnapshot.size)
+                    
+                    const likesPromises = forumsSnapshot.docs.map(forumDoc => 
+                        getDocs(collection(db, 'forums', forumDoc.id, 'likes'))
+                    )
+                    const likesSnapshots = await Promise.all(likesPromises)
+                    const likesSum = likesSnapshots.reduce((acc, snap) => acc + snap.size, 0)
+                    setTotalForumLikes(likesSum)
                 } catch (error) {
                     console.error('Error fetching user data:', error)
                 }
@@ -96,7 +117,10 @@ export default function AccountPageUser() {
 
     return (
         <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
-            <div className="w-full max-w-md bg-white text-black rounded-lg shadow-lg p-8">
+            <div className="w-full max-w-4xl flex flex-col md:flex-row items-stretch gap-6 pt-16">
+                
+                {/* Profile Settings Card */}
+                <div className="bg-white text-black rounded-lg shadow-lg p-8 flex-1 w-full">
                 <div className="flex flex-col items-center mb-6">
                     {photoUrl ? (
                         <img src={photoUrl} alt="Profile" className="w-24 h-24 rounded-full object-cover border-2 border-black mb-4" />
@@ -109,10 +133,6 @@ export default function AccountPageUser() {
                     <p className="text-gray-600 text-center">{userEmail}</p>
                 </div>
 
-                <div className="mb-6 bg-gray-100 rounded p-4 text-center">
-                    <p className="text-lg font-semibold">Courses Owned</p>
-                    <p className="text-3xl font-bold text-black">{ownedCoursesCount}</p>
-                </div>
 
                 {isEditing ? (
                     <div className="flex flex-col gap-4 mb-6">
@@ -159,6 +179,43 @@ export default function AccountPageUser() {
                 >
                     Sign Out
                 </button>
+                </div>
+
+                {/* Progress Tracker Card */}
+                <div className="bg-white text-black rounded-lg shadow-lg p-8 flex-1 w-full flex flex-col">
+                    <h2 className="text-xl font-bold text-center mb-6 uppercase tracking-widest border-b border-gray-200 pb-2">Progress Tracker</h2>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                        <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Total</span>
+                            <span className="text-3xl font-bold">{ownedCoursesCount}</span>
+                        </div>
+                        <div className="flex flex-col border-l border-r border-gray-200">
+                            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">In Progress</span>
+                            <span className="text-3xl font-bold">{inProgressCoursesCount}</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Completed</span>
+                            <span className="text-3xl font-bold">{completedCoursesCount}</span>
+                        </div>
+                    </div>
+                    <div className="mt-5 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div className="bg-black h-full transition-all duration-500" style={{ width: `${ownedCoursesCount > 0 ? (completedCoursesCount / ownedCoursesCount) * 100 : 0}%` }} />
+                    </div>
+                    <p className="text-xs text-center text-gray-500 mt-2 pb-6 border-b border-gray-200">
+                        {ownedCoursesCount > 0 ? `${Math.round((completedCoursesCount / ownedCoursesCount) * 100)}% overall completion` : 'Enroll in courses to start learning'}
+                    </p>
+
+                    <div className="mt-6 flex justify-around items-center text-center flex-1">
+                        <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Forums Created</span>
+                            <span className="text-3xl font-bold">{forumsCreatedCount}</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Forum Likes</span>
+                            <span className="text-3xl font-bold">{totalForumLikes}</span>
+                        </div>
+                    </div>
+                </div>
 
                 {showResetConfirm && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

@@ -13,12 +13,12 @@ interface ForumData {
   isCreator: boolean
   creatorId: string
   linkedCourseId?: string
-  ownsLinkedCourse?: boolean
 }
 
 interface Comment {
   id: string
   userId: string
+  userName: string
   text: string
   createdAt: Date
   likes: number
@@ -61,42 +61,6 @@ export default function CreatorViewForumPage() {
         const forumData = forumDoc.data() as any
         const linkedCourseId = forumData.linkedCourseId || null
 
-        let ownsLinkedCourse = false
-        if (linkedCourseId && uid) {
-          let hasAccess = false
-
-          // 2. Parallelize course and user access checks
-          const courseDocPromise = getDoc(doc(db, 'courses', linkedCourseId))
-          let userDocPromise: Promise<any> = Promise.resolve(null)
-
-          if (forumData.userId === uid || forumData.creatorId === uid) {
-            hasAccess = true
-          } else {
-            userDocPromise = getDoc(doc(db, 'users', uid))
-          }
-
-          const [courseDocSnap, userDocSnap] = await Promise.all([courseDocPromise, userDocPromise])
-
-          if (userDocSnap && userDocSnap.exists()) {
-            const userData = userDocSnap.data()
-            const purchasedCourses = userData.purchasedCourses || []
-            if (purchasedCourses.includes(linkedCourseId)) {
-              hasAccess = true
-            }
-          }
-
-          if (courseDocSnap.exists()) {
-            if (courseDocSnap.data().creatorId === uid) {
-              ownsLinkedCourse = true
-            }
-          }
-
-          if (!hasAccess) {
-            router.push(`/user/view-course/${linkedCourseId}`)
-            return
-          }
-        }
-
         setForum({
           id: forumId,
           title: forumData.title,
@@ -105,7 +69,6 @@ export default function CreatorViewForumPage() {
           isCreator: forumData.isCreator || false,
           creatorId: forumData.creatorId || '',
           linkedCourseId,
-          ownsLinkedCourse,
         })
 
         const commentsList = await Promise.all(
@@ -117,9 +80,16 @@ export default function CreatorViewForumPage() {
               liked = likeDoc.exists()
             }
 
+            let userName = commentData.userName
+            if (!userName && commentData.userId) {
+              const userDoc = await getDoc(doc(db, 'users', commentData.userId))
+              userName = userDoc.exists() ? (userDoc.data().username || 'Anonymous') : 'Anonymous'
+            }
+
             return {
               id: d.id,
               userId: commentData.userId,
+              userName: userName || 'Anonymous',
               text: commentData.text,
               createdAt: commentData.createdAt?.toDate() || new Date(),
               likes: commentData.likes || 0,
@@ -143,11 +113,6 @@ export default function CreatorViewForumPage() {
     e.preventDefault()
     if (!newComment.trim() || !forumId) return
 
-    if (forum?.linkedCourseId && !forum?.ownsLinkedCourse) {
-      alert('Creators cannot comment on linked course forums unless they created the course.')
-      return
-    }
-
     const uid = auth.currentUser?.uid
     if (!uid) {
       alert('Please sign in to comment')
@@ -156,9 +121,13 @@ export default function CreatorViewForumPage() {
 
     setSubmitting(true)
     try {
+      const userDocRef = await getDoc(doc(db, 'users', uid))
+      const userName = userDocRef.exists() ? (userDocRef.data().username || 'Anonymous') : 'Anonymous'
+
       const commentsCollection = collection(db, 'forums', forumId, 'comments')
       const docRef = await addDoc(commentsCollection, {
         userId: uid,
+        userName,
         text: newComment,
         createdAt: serverTimestamp(),
         likes: 0,
@@ -169,6 +138,7 @@ export default function CreatorViewForumPage() {
         {
           id: docRef.id,
           userId: uid,
+          userName,
           text: newComment,
           createdAt: new Date(),
           likes: 0,
@@ -256,29 +226,23 @@ export default function CreatorViewForumPage() {
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-4">Comments ({comments.length})</h2>
 
-          {forum.linkedCourseId && !forum.ownsLinkedCourse ? (
-            <div className="mb-6 bg-gray-800 p-4 rounded-lg border border-gray-600 text-center text-gray-400 italic">
-              As a creator, you cannot comment on forums linked to a course unless you created it.
-            </div>
-          ) : (
-            <form onSubmit={handleAddComment} className="mb-6 bg-gray-800 p-4 rounded-lg border border-gray-600">
-              <textarea
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Share your thoughts on this forum..."
-                className="w-full p-3 border border-gray-600 rounded mb-3 bg-gray-700 text-white"
-                rows={3}
-                required
-              ></textarea>
-              <button
-                type="submit"
-                disabled={submitting || !newComment.trim()}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-60"
-              >
-                {submitting ? 'Posting...' : 'Post Comment'}
-              </button>
-            </form>
-          )}
+          <form onSubmit={handleAddComment} className="mb-6 bg-gray-800 p-4 rounded-lg border border-gray-600">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Share your thoughts on this forum..."
+              className="w-full p-3 border border-gray-600 rounded mb-3 bg-gray-700 text-white"
+              rows={3}
+              required
+            ></textarea>
+            <button
+              type="submit"
+              disabled={submitting || !newComment.trim()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-60"
+            >
+              {submitting ? 'Posting...' : 'Post Comment'}
+            </button>
+          </form>
 
           <div className="mb-4 flex gap-4">
             <button
@@ -301,7 +265,7 @@ export default function CreatorViewForumPage() {
             ) : (
               sortedComments.map((comment) => (
                   <div key={comment.id} className="bg-gray-800 border border-gray-600 rounded-lg p-4">
-                  <p className="text-sm text-gray-300 mb-2">User ID: {comment.userId.substring(0, 8)}...</p>
+                  <p className="text-sm text-gray-300 mb-2 font-semibold">{comment.userName}</p>
                   <p className="text-white mb-3">{comment.text}</p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-300">{comment.createdAt.toLocaleDateString()} {comment.createdAt.toLocaleTimeString()}</span>
