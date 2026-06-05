@@ -100,14 +100,24 @@ export default function CreatorMainPage() {
                 <p className="text-sm text-gray-300 line-clamp-2">
                   {course.description || 'No description available.'}
                 </p>
-                <p className="text-sm text-gray-300">
-                  Videos: {course.videoUrls ? course.videoUrls.length : 0}
-                </p>
-                {course.category && (
-                  <span className="text-xs bg-gray-600 px-2 py-1 rounded w-fit">
-                    {course.category}
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-gray-300">
+                    Videos: {course.lessons ? course.lessons.length : (course.videoUrls ? course.videoUrls.length : 0)}
+                  </p>
+                  <p className="text-sm text-gray-300 font-medium">
+                    Students Enrolled: {course.purchasedBy?.length || course.studentCount || 0}
+                  </p>
+                </div>
+                <div className="flex gap-2 items-center mt-1">
+                  {course.category && (
+                    <span className="text-xs bg-gray-600 px-2 py-1 rounded w-fit">
+                      {course.category}
+                    </span>
+                  )}
+                  <span className={`text-xs px-2 py-1 rounded w-fit ${course.status === 'Published' ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'}`}>
+                    {course.status || 'Drafted'}
                   </span>
-                )}
+                </div>
               </div>
               )
             })}

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
 import { db, auth } from '../../../../lib/ClientApp'
 import { doc, getDoc, collection, getDocs, query, where, orderBy, addDoc, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore'
 
@@ -13,6 +14,7 @@ interface ForumData {
   isCreator: boolean
   creatorId: string
   linkedCourseId?: string
+  canManage?: boolean
 }
 
 interface Comment {
@@ -57,6 +59,11 @@ export default function UserViewForumPage() {
 
         const uid = auth.currentUser?.uid
 
+        let canManage = false
+        if (uid && forumData.userId === uid) {
+          canManage = true
+        }
+
         if (linkedCourseId && uid) {
           let hasAccess = false
           if (forumData.userId === uid || forumData.creatorId === uid) {
@@ -87,6 +94,7 @@ export default function UserViewForumPage() {
           isCreator: forumData.isCreator || false,
           creatorId: forumData.creatorId || '',
           linkedCourseId,
+          canManage,
         })
 
         // Fetch comments
@@ -212,6 +220,33 @@ export default function UserViewForumPage() {
     }
   }
 
+  const handleDeleteForum = async () => {
+    if (!forumId) return
+    if (!window.confirm('Are you sure you want to delete this forum? This action cannot be undone.')) {
+      return
+    }
+    
+    try {
+      await deleteDoc(doc(db, 'forums', forumId as string))
+      router.push('/user/forums')
+    } catch (err: any) {
+      alert('Failed to delete forum: ' + err.message)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!forumId) return
+    if (!window.confirm('Are you sure you want to delete this comment?')) {
+      return
+    }
+    try {
+      await deleteDoc(doc(db, 'forums', forumId as string, 'comments', commentId))
+      setComments((prev) => prev.filter((c) => c.id !== commentId))
+    } catch (err: any) {
+      alert('Failed to delete comment: ' + err.message)
+    }
+  }
+
   const getSortedComments = () => {
     const sorted = [...comments]
     if (sortBy === 'recent') {
@@ -231,9 +266,28 @@ export default function UserViewForumPage() {
   return (
     <div className="min-h-screen bg-white text-black flex flex-col items-center p-6">
       <div className="w-full max-w-2xl">
-        <button onClick={() => router.back()} className="mb-4 text-blue-600 hover:text-blue-800">
-          &larr; Back
-        </button>
+        <div className="flex justify-between items-center mb-4">
+          <button onClick={() => router.back()} className="text-blue-600 hover:text-blue-800">
+            &larr; Back
+          </button>
+          {forum.canManage && (
+            <div className="flex items-center gap-2">
+              <Link href={`/user/forums/edit-forum/${forumId}`}>
+                <button
+                  className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm font-semibold transition"
+                >
+                  Edit Forum
+                </button>
+              </Link>
+              <button
+                onClick={handleDeleteForum}
+                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-semibold transition"
+              >
+                Delete Forum
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="bg-white border border-black rounded-lg p-6 mb-6">
           <div className="flex items-center gap-2 mb-2">
@@ -291,19 +345,29 @@ export default function UserViewForumPage() {
                   <p className="text-black mb-3">{comment.text}</p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-black">{comment.createdAt.toLocaleDateString()} {comment.createdAt.toLocaleTimeString()}</span>
-                    <button
-                      onClick={() => handleToggleLikeComment(comment.id, !!comment.liked)}
-                      disabled={!!liking[comment.id]}
-                      className={`px-3 py-1 rounded ${comment.liked ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'} ${liking[comment.id] ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    >
-                      {liking[comment.id] ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        </span>
-                      ) : (
-                        `👍 ${comment.likes || 0}`
+                    <div className="flex items-center gap-3">
+                      {comment.userId === auth.currentUser?.uid && (
+                        <button
+                          onClick={() => handleDeleteComment(comment.id)}
+                          className="text-red-500 hover:text-red-700 font-semibold"
+                        >
+                          Delete
+                        </button>
                       )}
-                    </button>
+                      <button
+                        onClick={() => handleToggleLikeComment(comment.id, !!comment.liked)}
+                        disabled={!!liking[comment.id]}
+                        className={`px-3 py-1 rounded ${comment.liked ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'} ${liking[comment.id] ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      >
+                        {liking[comment.id] ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          </span>
+                        ) : (
+                          `👍 ${comment.likes || 0}`
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))

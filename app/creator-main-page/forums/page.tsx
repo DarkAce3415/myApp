@@ -15,6 +15,7 @@ interface Forum {
     liked?: boolean;
     isCreator?: boolean;
     linkedCourseId?: string;
+    hasAccess?: boolean;
 } 
 
 export default function CreatorForumsPage() {
@@ -53,6 +54,8 @@ export default function CreatorForumsPage() {
                         const data = d.data() as any;
                         const id = d.id;
 
+                        const uid = auth.currentUser?.uid;
+
                         const likes7Query = query(collection(db, 'forums', id, 'likes'), where('timestamp', '>=', cutoff));
                         const likes7Snapshot = await getDocs(likes7Query);
                         const weeklyLikes = likes7Snapshot.size;
@@ -61,10 +64,22 @@ export default function CreatorForumsPage() {
                         const totalLikes = likesAllSnapshot.size;
 
                         let liked = false;
-                        const uid = auth.currentUser?.uid;
                         if (uid) {
                             const likedDoc = await getDoc(doc(db, 'forums', id, 'likes', uid));
                             liked = likedDoc.exists();
+                        }
+
+                        let hasAccess = true;
+                        if (data.linkedCourseId && uid) {
+                            hasAccess = false;
+                            if (data.userId === uid || data.creatorId === uid) {
+                                hasAccess = true;
+                            } else {
+                                const courseDoc = await getDoc(doc(db, 'courses', data.linkedCourseId));
+                                if (courseDoc.exists() && courseDoc.data().creatorId === uid) {
+                                    hasAccess = true;
+                                }
+                            }
                         }
 
                         return {
@@ -77,14 +92,16 @@ export default function CreatorForumsPage() {
                             liked,
                             isCreator: data.isCreator || false,
                             linkedCourseId: data.linkedCourseId || null,
+                            hasAccess,
                         } as Forum;
                     })
                 );
 
-                const uniqueTopics = Array.from(new Set(forumsList.map((f) => f.topic || 'General')));
+                const validForumsList = forumsList.filter(Boolean) as Forum[];
+                const uniqueTopics = Array.from(new Set(validForumsList.map((f) => f.topic || 'General')));
 
                 setTopics(uniqueTopics);
-                setForums(forumsList);
+                setForums(validForumsList);
             } catch (e: any) {
                 setError(e.message);
             } finally {
@@ -110,6 +127,12 @@ export default function CreatorForumsPage() {
         const uid = auth.currentUser?.uid;
         if (!uid) {
             alert('Please sign in to like forums.');
+            return;
+        }
+
+        const forumTarget = forums.find(f => f.id === forumId);
+        if (forumTarget && forumTarget.hasAccess === false) {
+            alert('Access denied! You cannot like a forum you do not have access to.');
             return;
         }
 
@@ -189,7 +212,7 @@ export default function CreatorForumsPage() {
                     <ul className="space-y-4">
                         {filtered.map((forum) => (
                             <div key={forum.id} className="flex justify-center">
-                                <li className="w-full border border-gray-600 bg-gray-800 rounded-lg p-4 shadow-md hover:bg-gray-750 transition">
+                                <li className={`w-full border border-gray-600 bg-gray-800 rounded-lg p-4 shadow-md hover:bg-gray-750 transition ${forum.hasAccess === false ? 'opacity-50 grayscale' : ''}`}>
                                     <Link href={`/creator-main-page/forums/view-forums/${forum.id}`} className="block">
                                         <div className="flex items-center gap-2 mb-2">
                                             <h2 className="text-xl font-semibold text-white">{forum.title}</h2>
@@ -206,8 +229,8 @@ export default function CreatorForumsPage() {
                                         <div className="flex items-center gap-3">
                                             <button 
                                             onClick={() => handleToggleLike(forum.id, !!forum.liked)} 
-                                            disabled={!!liking[forum.id]}
-                                            className={`px-3 py-1 rounded ${forum.liked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} ${liking[forum.id] ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                                            disabled={!!liking[forum.id] || forum.hasAccess === false}
+                                            className={`px-3 py-1 rounded ${forum.liked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} ${(liking[forum.id] || forum.hasAccess === false) ? 'opacity-60 cursor-not-allowed' : ''}`}>
                                             {liking[forum.id] ? (
                                                 <span className="inline-flex items-center gap-2">
                                                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

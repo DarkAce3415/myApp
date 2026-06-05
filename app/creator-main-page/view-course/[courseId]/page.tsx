@@ -11,6 +11,7 @@ interface LessonData {
   title: string;
   description: string;
   url?: string;
+  duration?: number;
 }
 
 interface Student {
@@ -33,6 +34,7 @@ export default function EditCoursePage() {
   const [message, setMessage] = useState<string | null>(null)
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState<number | ''>('');
+  const [status, setStatus] = useState<'Published' | 'Drafted'>('Drafted');
   const [students, setStudents] = useState<Student[]>([])
 
   useEffect(() => {
@@ -48,13 +50,14 @@ export default function EditCoursePage() {
           const fetchedLessons = data.lessons || data.videoUrls?.map((item: string | any, index: number) => 
             typeof item === 'string' 
               ? { title: `Lesson ${index + 1}`, description: '', url: item } 
-              : { title: item.title || `Lesson ${index + 1}`, description: item.description || '', url: item.url }
+              : { title: item.title || `Lesson ${index + 1}`, description: item.description || '', url: item.url, duration: item.duration }
           ) || []
           setLessons(fetchedLessons)
           setDescription(data.description || '')
           setCategory(data.category || '');
           setCourseThumbnail(data.courseThumbnail || null);
           setPrice(data.price || '');
+          setStatus(data.status || 'Drafted');
 
           const purchasedBy: string[] = data.purchasedBy || []
           if (purchasedBy.length > 0) {
@@ -86,15 +89,19 @@ export default function EditCoursePage() {
     fetchCourse()
   }, [courseId])
 
-  const handleUpdate = useCallback(async () => {
+  const handleUpdate = useCallback(async (newStatus: 'Published' | 'Drafted') => {
     if (!courseId) return
-    if (!price || Number(price) < 50000) {
-      alert('Price must be at least 50,000.');
-      return;
-    }
-    if (lessons.some(l => !l.title.trim() || !l.description.trim())) {
-      alert('All lessons must have a valid title and description.');
-      return;
+    
+    // Only validate complete data if the creator is trying to publish
+    if (newStatus === 'Published') {
+      if (!price || Number(price) < 50000) {
+        alert('Price must be at least 50,000.');
+        return;
+      }
+      if (lessons.some(l => !l.title.trim() || !l.description.trim())) {
+        alert('All lessons must have a valid title and description.');
+        return;
+      }
     }
     try {
       const docRef = doc(db, 'courses', courseId)
@@ -105,8 +112,10 @@ export default function EditCoursePage() {
         courseThumbnail: courseThumbnail || null, 
         category,
         price: Number(price),
+        status: newStatus,
       })
-      alert('Course updated successfully')
+      setStatus(newStatus)
+      alert(`Course ${newStatus === 'Published' ? 'published' : 'draft saved'} successfully`)
       router.push('/creator-main-page')
     } catch (error) {
       console.error('Error updating course:', error)
@@ -148,10 +157,10 @@ export default function EditCoursePage() {
     });
   }, []);
 
-  const handleLessonVideoUpload = useCallback((index: number, url: string) => {
+  const handleLessonVideoUpload = useCallback((index: number, url: string, duration?: number) => {
     setLessons((prevLessons) => {
       const newLessons = [...prevLessons];
-      newLessons[index] = { ...newLessons[index], url };
+      newLessons[index] = { ...newLessons[index], url, duration };
       return newLessons;
     });
     setMessage('Video uploaded for lesson. Remember to save changes.');
@@ -190,13 +199,26 @@ export default function EditCoursePage() {
     setMessage('Course thumbnail uploaded. Remember to save changes.');
   }, []);
   
+  const formatDuration = (seconds: number) => {
+    if (!seconds) return '0:00';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+  const totalDuration = lessons.reduce((acc, lesson) => acc + (lesson.duration || 0), 0);
+
   if (loading) return <div className="p-6 flex justify-center text-white bg-gray-900 min-h-screen">Loading...</div>
   if (!courseId) return <div className="p-6 flex justify-center text-white bg-gray-900 min-h-screen">Invalid Course ID</div>
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-6">
       <div className="w-full max-w-2xl flex flex-col gap-6">
-        <h1 className="text-2xl font-bold">Edit Course</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">Edit Course</h1>
+          <span className={`px-2 py-1 text-xs font-semibold rounded ${status === 'Published' ? 'bg-green-600' : 'bg-yellow-600'}`}>
+            {status}
+          </span>
+        </div>
         
         <div className="flex flex-col gap-2">
           <label className="font-semibold">Title</label>
@@ -265,15 +287,20 @@ export default function EditCoursePage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex justify-between items-center mb-2">
-            <label className="font-semibold">Course Lessons</label>
-            <button
-              type="button"
-              onClick={handleAddLesson}
-              className="px-3 py-1 text-sm bg-gray-800 text-white border border-gray-600 border-dashed rounded hover:bg-gray-700 transition"
-            >
-              + Add Lesson Module
-            </button>
+          <div className="flex justify-between items-end mb-2">
+            <div>
+              <label className="font-semibold block">Course Lessons</label>
+              {totalDuration > 0 && <span className="text-sm text-gray-400">Total Duration: {formatDuration(totalDuration)}</span>}
+            </div>
+            {status !== 'Published' && (
+              <button
+                type="button"
+                onClick={handleAddLesson}
+                className="px-3 py-1 text-sm bg-gray-800 text-white border border-gray-600 border-dashed rounded hover:bg-gray-700 transition"
+              >
+                + Add Lesson Module
+              </button>
+            )}
           </div>
           
           {lessons.length === 0 ? (
@@ -284,13 +311,15 @@ export default function EditCoursePage() {
                 <div key={index} className="border border-gray-600 bg-gray-800 rounded p-3 flex flex-col gap-2">
                   <div className="flex justify-between items-center mb-1">
                     <p className="font-bold text-sm">Lesson {index + 1}</p>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteLesson(index)}
-                      className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                    >
-                      Delete
-                    </button>
+                    {status !== 'Published' && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLesson(index)}
+                        className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                   <div className="flex-grow flex flex-col gap-2 w-full">
                     <input
@@ -309,39 +338,46 @@ export default function EditCoursePage() {
                       rows={3}
                       required
                     />
-                    <div className="flex justify-between items-center mt-2">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleMoveLesson(index, 'up')}
-                          disabled={index === 0}
-                          className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
-                        >
-                          Up
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleMoveLesson(index, 'down')}
-                          disabled={index === lessons.length - 1}
-                          className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
-                        >
-                          Down
-                        </button>
+                    {status !== 'Published' && (
+                      <div className="flex justify-between items-center mt-2">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveLesson(index, 'up')}
+                            disabled={index === 0}
+                            className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
+                          >
+                            Up
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveLesson(index, 'down')}
+                            disabled={index === lessons.length - 1}
+                            className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
+                          >
+                            Down
+                          </button>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <CldUploadWidget
+                            uploadPreset="next_js_cloudinary"
+                            onSuccess={(result: any) => handleLessonVideoUpload(index, result.info.secure_url, result.info.duration)}
+                          >
+                            {({ open }) => (
+                              <button type="button" onClick={() => open()} className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                                {lesson.url ? 'Change Video' : 'Upload Video'}
+                              </button>
+                            )}
+                          </CldUploadWidget>
+                        </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <CldUploadWidget
-                          uploadPreset="next_js_cloudinary"
-                          onSuccess={(result: any) => handleLessonVideoUpload(index, result.info.secure_url)}
-                        >
-                          {({ open }) => (
-                            <button type="button" onClick={() => open()} className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-                              {lesson.url ? 'Change Video' : 'Upload Video'}
-                            </button>
-                          )}
-                        </CldUploadWidget>
+                    )}
+                    {lesson.url && (
+                      <div className="flex justify-between items-center mt-1">
+                        <p className="text-xs text-green-400 truncate w-3/4">Video: {lesson.url}</p>
+                        {lesson.duration && <p className="text-xs text-gray-400">{formatDuration(lesson.duration)}</p>}
                       </div>
-                    </div>
-                    {lesson.url && <p className="text-xs text-green-400 truncate mt-1">Video: {lesson.url}</p>}
+                    )}
                   </div>
                 </div>
               ))}
@@ -380,26 +416,40 @@ export default function EditCoursePage() {
           </div>
         </div>
 
-        <div className="flex gap-4">
-          <button 
-            onClick={handleUpdate}
-            className="px-6 py-2 bg-white text-black rounded font-semibold hover:opacity-90 transition"
-          >
-            Save Changes
-          </button>
+        <div className="flex flex-wrap gap-4">
+          {status !== 'Published' && (
+            <>
+              <button 
+                onClick={() => handleUpdate('Published')}
+                className="px-6 py-2 bg-white text-black rounded font-semibold hover:opacity-90 transition"
+              >
+                Publish
+              </button>
+              <button 
+                onClick={() => handleUpdate('Drafted')}
+                className="px-6 py-2 border border-gray-600 bg-gray-800 text-white rounded font-semibold hover:bg-gray-700 transition"
+              >
+                Save Draft
+              </button>
+            </>
+          )}
+
           <button 
             onClick={() => router.back()}
             className="px-6 py-2 border border-white text-white rounded font-semibold hover:bg-gray-800 transition"
           >
-            Cancel
+            {status === 'Published' ? 'Back' : 'Cancel'}
           </button>
-          <button
-            onClick={handleDeleteCourse}
-            className="px-6 py-2 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition"
-            type="button"
-          >
-            Delete Course
-          </button>
+
+          {status !== 'Published' && (
+            <button
+              onClick={handleDeleteCourse}
+              className="px-6 py-2 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition"
+              type="button"
+            >
+              Delete Course
+            </button>
+          )}
         </div>
 
         {message && <p className="text-sm mt-4 text-green-400">{message}</p>}

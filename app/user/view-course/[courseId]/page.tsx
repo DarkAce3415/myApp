@@ -219,6 +219,7 @@ export default function UserViewCoursePage() {
 
   if (loading) return <div className="p-6 flex justify-center">Loading...</div>
   if (!course) return <div className="p-6 flex justify-center">Course not found</div>
+  if (course.status !== 'Published' && !isPurchased) return <div className="p-6 flex justify-center">This course is not currently available.</div>
 
   const lessons = course.lessons || course.videoUrls || [];
 
