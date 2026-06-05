@@ -48,8 +48,14 @@ export default function Navbar() {
 
       {/* Sliding Navbar */}
       <nav className={`fixed top-0 left-0 w-full bg-black flex justify-between items-center pl-24 pr-8 py-4 border-b border-gray-800 z-40 transition-transform duration-300 ease-in-out ${isNavOpen ? 'translate-y-0' : '-translate-y-full'}`}>
-        <div className="text-2xl font-bold tracking-tight text-white">
-          <Link href="/">MyWebsite</Link>
+        <div className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <img 
+            src={process.env.NEXT_PUBLIC_LOGO_URL || '/logo.png'} 
+            alt="AILink Logo" 
+            className="w-8 h-8 rounded object-cover"
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
+          />
+          <Link href="/">AILink</Link>
         </div>
         <div className="flex gap-4">
           <Link href={mainPageLink} className="px-4 py-2 border border-transparent rounded bg-white text-black font-semibold hover:bg-gray-300 transition shadow-sm">Home</Link>

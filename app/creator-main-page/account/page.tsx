@@ -13,6 +13,7 @@ export default function AccountPageCreator() {
     const [username, setUsername] = useState('')
     const [photoUrl, setPhotoUrl] = useState('')
     const [totalStudents, setTotalStudents] = useState(0)
+    const [totalIncome, setTotalIncome] = useState(0)
     const [forumsCreatedCount, setForumsCreatedCount] = useState(0)
     const [totalForumLikes, setTotalForumLikes] = useState(0)
     const [isEditing, setIsEditing] = useState(false)
@@ -40,12 +41,16 @@ export default function AccountPageCreator() {
                     const q = query(collection(db, 'courses'), where('creatorId', '==', user.uid))
                     const querySnapshot = await getDocs(q)
                     let total = 0
+                    let income = 0
                     querySnapshot.forEach((doc) => {
                         const courseData = doc.data()
                         // Will tally up length of purchasedBy array or a studentCount metric (if present)
-                        total += courseData.purchasedBy?.length || courseData.studentCount || 0
+                        const students = courseData.purchasedBy?.length || courseData.studentCount || 0
+                        total += students
+                        income += students * (courseData.price || 0)
                     })
                     setTotalStudents(total)
+                    setTotalIncome(income)
 
                     // Fetch forums and their total likes
                     const forumsQuery = query(collection(db, 'forums'), where('userId', '==', user.uid), where('isCreator', '==', true))
@@ -118,7 +123,10 @@ export default function AccountPageCreator() {
     }
     return (
         <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-6">
-            <div className="w-full max-w-md bg-gray-800 text-white rounded-lg shadow-lg p-8">
+            <div className="w-full max-w-4xl flex flex-col md:flex-row items-stretch gap-6 pt-16">
+                
+                {/* Profile Settings Card */}
+                <div className="bg-gray-800 text-white rounded-lg shadow-lg p-8 flex-1 w-full">
                 <div className="flex flex-col items-center mb-6">
                     {photoUrl ? (
                         <img src={photoUrl} alt="Profile" className="w-24 h-24 rounded-full object-cover border-2 border-gray-600 mb-4" />
@@ -129,21 +137,6 @@ export default function AccountPageCreator() {
                     )}
                     <h1 className="text-2xl font-bold text-center">{username || 'Creator'}</h1>
                     <p className="text-gray-400 text-center">{userEmail}</p>
-                </div>
-
-                <div className="mb-6 grid grid-cols-2 gap-4">
-                    <div className="bg-gray-700 rounded p-4 text-center col-span-2">
-                        <p className="text-lg font-semibold text-gray-300">Total Students Reached</p>
-                        <p className="text-3xl font-bold text-white">{totalStudents}</p>
-                    </div>
-                    <div className="bg-gray-700 rounded p-4 text-center">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Forums Created</p>
-                        <p className="text-2xl font-bold text-white">{forumsCreatedCount}</p>
-                    </div>
-                    <div className="bg-gray-700 rounded p-4 text-center">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Forum Likes</p>
-                        <p className="text-2xl font-bold text-white">{totalForumLikes}</p>
-                    </div>
                 </div>
 
                 {isEditing ? (
@@ -191,6 +184,33 @@ export default function AccountPageCreator() {
                 >
                     Sign Out
                 </button>
+                </div>
+
+                {/* Creator Statistics Card */}
+                <div className="bg-gray-800 text-white rounded-lg shadow-lg p-8 flex-1 w-full flex flex-col">
+                    <h2 className="text-xl font-bold text-center mb-6 uppercase tracking-widest border-b border-gray-700 pb-2">Creator Statistics</h2>
+                    
+                    <div className="flex flex-col gap-6">
+                        <div className="bg-gray-700 rounded p-4 text-center">
+                            <p className="text-lg font-semibold text-gray-300">Total Income</p>
+                            <p className="text-3xl font-bold text-green-400">Rp {totalIncome.toLocaleString('id-ID')}</p>
+                        </div>
+                        <div className="bg-gray-700 rounded p-4 text-center">
+                            <p className="text-lg font-semibold text-gray-300">Total Students Reached</p>
+                            <p className="text-3xl font-bold text-white">{totalStudents}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-gray-700 rounded p-4 text-center">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Forums Created</p>
+                                <p className="text-2xl font-bold text-white">{forumsCreatedCount}</p>
+                            </div>
+                            <div className="bg-gray-700 rounded p-4 text-center">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Forum Likes</p>
+                                <p className="text-2xl font-bold text-white">{totalForumLikes}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 {showResetConfirm && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

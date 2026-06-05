@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore'
+import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { db, auth } from '../lib/ClientApp'
 
@@ -36,7 +36,8 @@ export default function GuestPage() {
 
     const fetchCourses = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'courses'))
+        const q = query(collection(db, 'courses'), where('status', '==', 'Published'))
+        const querySnapshot = await getDocs(q)
         const coursesData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()

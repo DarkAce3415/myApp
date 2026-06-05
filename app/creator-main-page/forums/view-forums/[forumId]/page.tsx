@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
 import { db, auth } from '../../../../lib/ClientApp'
 import { doc, getDoc, collection, getDocs, query, where, orderBy, addDoc, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore'
 
@@ -13,6 +14,7 @@ interface ForumData {
   isCreator: boolean
   creatorId: string
   linkedCourseId?: string
+  canManage?: boolean
 }
 
 interface Comment {
@@ -61,6 +63,38 @@ export default function CreatorViewForumPage() {
         const forumData = forumDoc.data() as any
         const linkedCourseId = forumData.linkedCourseId || null
 
+        let canManage = false
+        if (uid) {
+          if (forumData.userId === uid || forumData.creatorId === uid) {
+            canManage = true
+          }
+        }
+
+        if (linkedCourseId && uid) {
+          let hasAccess = false
+          if (canManage) {
+            hasAccess = true
+          } else {
+            const courseDocRef = doc(db, 'courses', linkedCourseId)
+            const courseDocSnap = await getDoc(courseDocRef)
+            if (courseDocSnap.exists()) {
+              if (courseDocSnap.data().creatorId === uid) {
+                hasAccess = true
+                canManage = true
+              }
+            }
+          }
+
+          if (!hasAccess) {
+            setError('access denied! You are not the creator of this course')
+            setLoading(false)
+            setTimeout(() => {
+              router.push('/creator-main-page/forums')
+            }, 1000)
+            return
+          }
+        }
+
         setForum({
           id: forumId,
           title: forumData.title,
@@ -69,6 +103,7 @@ export default function CreatorViewForumPage() {
           isCreator: forumData.isCreator || false,
           creatorId: forumData.creatorId || '',
           linkedCourseId,
+          canManage,
         })
 
         const commentsList = await Promise.all(
@@ -190,6 +225,33 @@ export default function CreatorViewForumPage() {
     }
   }
 
+  const handleDeleteForum = async () => {
+    if (!forumId) return
+    if (!window.confirm('Are you sure you want to delete this forum? This action cannot be undone.')) {
+      return
+    }
+    
+    try {
+      await deleteDoc(doc(db, 'forums', forumId as string))
+      router.push('/creator-main-page/forums')
+    } catch (err: any) {
+      alert('Failed to delete forum: ' + err.message)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!forumId) return
+    if (!window.confirm('Are you sure you want to delete this comment?')) {
+      return
+    }
+    try {
+      await deleteDoc(doc(db, 'forums', forumId as string, 'comments', commentId))
+      setComments((prev) => prev.filter((c) => c.id !== commentId))
+    } catch (err: any) {
+      alert('Failed to delete comment: ' + err.message)
+    }
+  }
+
   const getSortedComments = () => {
     const sorted = [...comments]
     if (sortBy === 'recent') {
@@ -209,9 +271,28 @@ export default function CreatorViewForumPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-6">
       <div className="w-full max-w-2xl">
-        <button onClick={() => router.back()} className="mb-4 text-blue-400 hover:text-blue-300">
-          &larr; Back
-        </button>
+        <div className="flex justify-between items-center mb-4">
+          <button onClick={() => router.back()} className="text-blue-400 hover:text-blue-300">
+            &larr; Back
+          </button>
+          {forum.canManage && (
+            <div className="flex items-center gap-2">
+              <Link href={`/creator-main-page/forums/view-forums/${forumId}/edit-forums`}>
+                <button
+                  className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm font-semibold transition"
+                >
+                  Edit Forum
+                </button>
+              </Link>
+              <button
+                onClick={handleDeleteForum}
+                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-semibold transition"
+              >
+                Delete Forum
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="bg-gray-800 border border-gray-600 rounded-lg p-6 mb-6">
           <div className="flex items-center gap-2 mb-2">
@@ -269,19 +350,27 @@ export default function CreatorViewForumPage() {
                   <p className="text-white mb-3">{comment.text}</p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-300">{comment.createdAt.toLocaleDateString()} {comment.createdAt.toLocaleTimeString()}</span>
-                    <button
-                      onClick={() => handleToggleLikeComment(comment.id, !!comment.liked)}
-                      disabled={!!liking[comment.id]}
-                      className={`px-3 py-1 rounded ${comment.liked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} ${liking[comment.id] ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    >
-                      {liking[comment.id] ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        </span>
-                      ) : (
-                        `👍 ${comment.likes || 0}`
-                      )}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="text-red-400 hover:text-red-300 font-semibold transition"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => handleToggleLikeComment(comment.id, !!comment.liked)}
+                        disabled={!!liking[comment.id]}
+                        className={`px-3 py-1 rounded ${comment.liked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} ${liking[comment.id] ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      >
+                        {liking[comment.id] ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          </span>
+                        ) : (
+                          `👍 ${comment.likes || 0}`
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))

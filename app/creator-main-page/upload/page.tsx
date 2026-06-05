@@ -22,6 +22,7 @@ export default function CreatorUploadPage() {
   const [price, setPrice] = useState<number | ''>(50000)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [submitStatus, setSubmitStatus] = useState<'Published' | 'Drafted'>('Published')
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categories = [
@@ -56,6 +57,7 @@ export default function CreatorUploadPage() {
         lessons: lessons,
         courseThumbnail: courseThumbnail,
         price: Number(price),
+        status: submitStatus,
         createdAt: serverTimestamp(),
       })
 
@@ -272,13 +274,24 @@ export default function CreatorUploadPage() {
             required
           />
 
-          <button
-            type="submit"
-            disabled={loading || lessons.length === 0}
-            className="w-full mt-2 py-2 rounded bg-white text-black font-semibold hover:opacity-90 transition disabled:opacity-50"
-          >
-            {loading ? 'Saving...' : 'Save Course'}
-          </button>
+          <div className="flex gap-4 mt-2">
+            <button
+              type="submit"
+              onClick={() => setSubmitStatus('Published')}
+              disabled={loading || lessons.length === 0}
+              className="flex-1 py-2 rounded bg-white text-black font-semibold hover:opacity-90 transition disabled:opacity-50"
+            >
+              {loading && submitStatus === 'Published' ? 'Publishing...' : 'Publish'}
+            </button>
+            <button
+              type="submit"
+              onClick={() => setSubmitStatus('Drafted')}
+              disabled={loading || lessons.length === 0}
+              className="flex-1 py-2 rounded border border-gray-600 bg-gray-700 text-white font-semibold hover:bg-gray-600 transition disabled:opacity-50"
+            >
+              {loading && submitStatus === 'Drafted' ? 'Saving...' : 'Save Draft'}
+            </button>
+          </div>
 
           {message && <p className="text-sm mt-2">{message}</p>}
         </form>
