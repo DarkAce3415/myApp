@@ -12,6 +12,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [messageType, setMessageType] = useState<'success' | 'error' | null>(null)
+  const [missingFields, setMissingFields] = useState<string[]>([])
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -22,8 +24,16 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setMessage(null)
-    if (!email || !password) {
+    setMessageType(null)
+    setMissingFields([])
+
+    const newMissingFields: string[] = []
+    if (!email) newMissingFields.push('email')
+    if (!password) newMissingFields.push('password')
+    if (newMissingFields.length > 0) {
       setMessage('Please enter both email and password.')
+      setMessageType('error')
+      setMissingFields(newMissingFields)
       setLoading(false)
       return  
     }
@@ -31,6 +41,8 @@ export default function LoginPage() {
     try {
       const userCred = await signInWithEmailAndPassword(auth, email, password)
       if (userCred?.user) {
+        setMessage('Login successful! Redirecting...')
+        setMessageType('success')
         const userDoc = await getDoc(doc(db, 'users', userCred.user.uid))
         if (userDoc.exists() && userDoc.data().isCreator === true) {
           // Insert or update the creator data into the 'creators' collection
@@ -47,8 +59,20 @@ export default function LoginPage() {
         return
       }
       setMessage('Could not sign in.')
+      setMessageType('error')
     } catch (err: any) {
-      setMessage(err?.message || 'Login failed')
+      let errorMessage = 'Login failed.'
+      if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-email') {
+        errorMessage = 'No user found with this email address.'
+      } else if (err?.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.'
+      } else if (err?.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid email or password.'
+      } else {
+        errorMessage = err?.message || 'Login failed.'
+      }
+      setMessage(errorMessage)
+      setMessageType('error')
     } finally {
       setLoading(false)
     }
@@ -57,15 +81,20 @@ export default function LoginPage() {
   const handleForgotPassword = async () => {
     if (!email) {
       setMessage('Please enter your email address above to reset your password.')
+      setMessageType('error')
+      setMissingFields(['email'])
       return
     }
     setLoading(true)
     setMessage(null)
+    setMessageType(null)
     try {
       await sendPasswordResetEmail(auth, email)
       setMessage('Password reset email sent! Please check your inbox.')
+      setMessageType('success')
     } catch (err: any) {
       setMessage(err?.message || 'Failed to send password reset email.')
+      setMessageType('error')
     } finally {
       setLoading(false)
     }
@@ -76,25 +105,36 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white text-black rounded-lg shadow-lg p-8">
         <h1 className="text-2xl font-bold mb-4 text-center">Sign in</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <label className="block text-sm font-medium">Email</label>
           <input
             type="email"
-            required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 rounded border border-black bg-white text-black focus:outline-none"
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (missingFields.includes('email')) {
+                setMissingFields(prev => prev.filter(f => f !== 'email'))
+              }
+            }}
+            className={`w-full px-3 py-2 rounded border focus:outline-none ${
+              missingFields.includes('email') ? 'border-red-500 bg-red-50 text-red-900' : 'border-black bg-white text-black'
+            }`}
           />
 
           <label className="block text-sm font-medium">Password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
-              required
-              minLength={6}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-black bg-white text-black focus:outline-none pr-10"
+              onChange={(e) => {
+                setPassword(e.target.value)
+                if (missingFields.includes('password')) {
+                  setMissingFields(prev => prev.filter(f => f !== 'password'))
+                }
+              }}
+              className={`w-full px-3 py-2 rounded border focus:outline-none pr-10 ${
+                missingFields.includes('password') ? 'border-red-500 bg-red-50 text-red-900' : 'border-black bg-white text-black'
+              }`}
             />
             <button
               type="button"
@@ -137,7 +177,15 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          {message && <p className="text-sm mt-2">{message}</p>}
+          {message && (
+            <div
+              className={`text-sm mt-4 p-3 rounded text-center font-medium ${
+                messageType === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+              }`}
+            >
+              {message}
+            </div>
+          )}
         </form>
       </div>
     </div>

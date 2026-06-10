@@ -223,7 +223,7 @@ export default function AccountPageUser() {
                             <h2 className="text-xl font-bold mb-4">Reset Password</h2>
                             <p className="mb-6 text-gray-700">Are you sure you want to send a password reset email to <strong>{userEmail}</strong>?</p>
                             <div className="flex gap-4 justify-center">
-                                <button onClick={()=>setShowResetConfirm(false)} className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition">Cancel</button>
+                                <button onClick={()=>setShowResetConfirm(false)} className="text-gray-900 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition">Cancel</button>
                                 <button onClick={handleResetPassword} className="px-4 py-2 bg-black text-white rounded hover:opacity-90 transition">Confirm</button>
                             </div>
                         </div>
