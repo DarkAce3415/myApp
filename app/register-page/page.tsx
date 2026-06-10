@@ -14,25 +14,39 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('')
   const [isCreator, setIsCreator] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const [messageType, setMessageType] = useState<'success' | 'error' | null>(null)
+  const [missingFields, setMissingFields] = useState<string[]>([])
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
-    setSuccess(null)
-    if (!email || !password || !confirm) {
-      setError('Please fill in all required fields.')
+    setMessage(null)
+    setMessageType(null)
+    setMissingFields([])
+
+    const newMissingFields: string[] = []
+    if (!email) newMissingFields.push('email')
+    if (!password) newMissingFields.push('password')
+    if (!confirm) newMissingFields.push('confirm')
+
+    if (newMissingFields.length > 0) {
+      setMessage('Please fill in all required fields.')
+      setMessageType('error')
+      setMissingFields(newMissingFields)
       return
     }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.')
+      setMessage('Password must be at least 6 characters.')
+      setMessageType('error')
+      setMissingFields(['password'])
       return
     }
     if (password !== confirm) {
-      setError('Passwords do not match.')
+      setMessage('Passwords do not match.')
+      setMessageType('error')
+      setMissingFields(['password', 'confirm'])
       return
     }
 
@@ -49,13 +63,25 @@ export default function RegisterPage() {
         isCreator,
         createdAt: serverTimestamp(),
       })
-      setSuccess('Account created successfully. Redirecting to login…')
+      setMessage('Account created successfully! Redirecting to login…')
+      setMessageType('success')
       setTimeout(() => {
         router.push('/login-page')
       }, 2000)
       return
     } catch (err: any) {
-      setError(err?.message || 'Registration failed.')
+      let errorMessage = 'Registration failed.'
+      if (err?.code === 'auth/email-already-in-use') {
+        errorMessage = 'An account already exists with this email address.'
+        setMissingFields(['email'])
+      } else if (err?.code === 'auth/invalid-email') {
+        errorMessage = 'The email address is invalid.'
+        setMissingFields(['email'])
+      } else {
+        errorMessage = err?.message || 'Registration failed.'
+      }
+      setMessage(errorMessage)
+      setMessageType('error')
     } finally {
       setLoading(false)
     }
@@ -66,7 +92,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md bg-white text-black rounded-lg shadow-lg p-8">
         <h1 className="text-2xl font-bold mb-4 text-center">Create account</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <label className="block text-sm font-medium">{isCreator ? 'Creator Username' : 'Username'} (optional)</label>
           <input
             type="text"
@@ -79,21 +105,32 @@ export default function RegisterPage() {
           <label className="block text-sm font-medium">{isCreator ? 'Creator Email' : 'Email'}</label>
           <input
             type="email"
-            required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 rounded border border-black bg-white text-black focus:outline-none"
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (missingFields.includes('email')) {
+                setMissingFields(prev => prev.filter(f => f !== 'email'))
+              }
+            }}
+            className={`w-full px-3 py-2 rounded border focus:outline-none ${
+              missingFields.includes('email') ? 'border-red-500 bg-red-50 text-red-900' : 'border-black bg-white text-black'
+            }`}
           />
 
           <label className="block text-sm font-medium">Password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
-              required
-              minLength={6}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-black bg-white text-black focus:outline-none pr-10"
+              onChange={(e) => {
+                setPassword(e.target.value)
+                if (missingFields.includes('password')) {
+                  setMissingFields(prev => prev.filter(f => f !== 'password'))
+                }
+              }}
+              className={`w-full px-3 py-2 rounded border focus:outline-none pr-10 ${
+                missingFields.includes('password') ? 'border-red-500 bg-red-50 text-red-900' : 'border-black bg-white text-black'
+              }`}
             />
             <button
               type="button"
@@ -112,11 +149,16 @@ export default function RegisterPage() {
           <div className="relative">
             <input
               type={showConfirmPassword ? 'text' : 'password'}
-              required
-              minLength={6}
               value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-black bg-white text-black focus:outline-none pr-10"
+              onChange={(e) => {
+                setConfirm(e.target.value)
+                if (missingFields.includes('confirm')) {
+                  setMissingFields(prev => prev.filter(f => f !== 'confirm'))
+                }
+              }}
+              className={`w-full px-3 py-2 rounded border focus:outline-none pr-10 ${
+                missingFields.includes('confirm') ? 'border-red-500 bg-red-50 text-red-900' : 'border-black bg-white text-black'
+              }`}
             />
             <button
               type="button"
@@ -173,8 +215,15 @@ export default function RegisterPage() {
             </button>
           </div>
 
-          {error && <p className="text-sm mt-2 text-red-700">{error}</p>}
-          {success && <p className="text-sm mt-2">{success}</p>}
+          {message && (
+            <div
+              className={`text-sm mt-4 p-3 rounded text-center font-medium ${
+                messageType === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+              }`}
+            >
+              {message}
+            </div>
+          )}
         </form>
       </div>
     </div>

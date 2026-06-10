@@ -22,7 +22,10 @@ export default function CreatorUploadPage() {
   const [price, setPrice] = useState<number | ''>(50000)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [messageType, setMessageType] = useState<'success' | 'error' | null>(null)
+  const [missingFields, setMissingFields] = useState<string[]>([])
   const [submitStatus, setSubmitStatus] = useState<'Published' | 'Drafted'>('Published')
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categories = [
@@ -34,19 +37,37 @@ export default function CreatorUploadPage() {
     'Robotics',
   ]
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (lessons.length === 0 || !description.trim() || !title.trim() || !category || !price || price < 50000) {
-      setMessage('Please fill in all fields, add at least one lesson, and set a price of at least 50,000.')
+  const handleSubmit = async (e?: React.FormEvent, skipConfirm = false) => {
+    if (e) e.preventDefault();
+    setMessage(null)
+    setMessageType(null)
+    setMissingFields([])
+
+    const newMissingFields: string[] = []
+    if (!title.trim()) newMissingFields.push('title')
+    if (!category) newMissingFields.push('category')
+    if (!price || price < 50000) newMissingFields.push('price')
+    if (lessons.length === 0) newMissingFields.push('lessons')
+    if (!description.trim()) newMissingFields.push('description')
+
+    if (newMissingFields.length > 0) {
+      setMessage('Please fill in all fields, add at least one lesson.')
+      setMessageType('error')
+      setMissingFields(newMissingFields)
       return
     }
     if (!auth.currentUser) {
       setMessage('You must be logged in to upload.')
+      setMessageType('error')
       return
     }
 
+    if (submitStatus === 'Published' && !skipConfirm) {
+      setShowPublishConfirm(true);
+      return;
+    }
+
     setLoading(true)
-    setMessage(null)
 
     try {
       await addDoc(collection(db, 'courses'), {
@@ -62,6 +83,7 @@ export default function CreatorUploadPage() {
       })
 
       setMessage('Course uploaded successfully!')
+      setMessageType('success')
       setDescription('')
       setTitle('')
       setCategory('')
@@ -71,6 +93,7 @@ export default function CreatorUploadPage() {
       setLessons([]);
     } catch (err: any) {
       setMessage(err?.message || 'Upload failed.')
+      setMessageType('error')
     } finally {
       setLoading(false)
     }
@@ -82,6 +105,9 @@ export default function CreatorUploadPage() {
       ...prevLessons,
       { title: `Lesson ${prevLessons.length + 1}`, description: '' },
     ]);
+    if (missingFields.includes('lessons')) {
+      setMissingFields(prev => prev.filter(f => f !== 'lessons'))
+    }
   };
 
   const handleLessonTitleChange = (index: number, newTitle: string) => {
@@ -106,7 +132,6 @@ export default function CreatorUploadPage() {
       newLessons[index] = { ...newLessons[index], url };
       return newLessons;
     });
-    setMessage('Video uploaded for lesson.');
   };
 
   const handleDeleteLesson = (indexToDelete: number) => {
@@ -123,7 +148,6 @@ export default function CreatorUploadPage() {
       } else if (direction === 'down' && index < newLessons.length - 1) {
         [newLessons[index + 1], newLessons[index]] = [newLessons[index], newLessons[index + 1]];
       }
-      setMessage('Lesson order changed. Remember to save the course to make it permanent.');
       return newLessons;
     });
   }
@@ -134,23 +158,35 @@ export default function CreatorUploadPage() {
       <div className="w-full max-w-md bg-gray-800 text-white rounded-lg shadow-lg p-8">
         <h1 className="text-2xl font-bold mb-4 text-center">Upload Course</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <label className="block text-sm font-medium">Course Title</label>
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 rounded border border-gray-600 bg-gray-700 text-white focus:outline-none focus:border-white"
+            onChange={(e) => {
+              setTitle(e.target.value)
+              if (missingFields.includes('title')) {
+                setMissingFields(prev => prev.filter(f => f !== 'title'))
+              }
+            }}
+            className={`w-full px-3 py-2 rounded border focus:outline-none ${
+              missingFields.includes('title') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-700 text-white focus:border-white'
+            }`}
             placeholder="Enter course title"
-            required
           />
 
           <label className="block text-sm font-medium">Category</label>
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-3 py-2 rounded border border-gray-600 bg-gray-700 text-white focus:outline-none focus:border-white"
-            required
+            onChange={(e) => {
+              setCategory(e.target.value)
+              if (missingFields.includes('category')) {
+                setMissingFields(prev => prev.filter(f => f !== 'category'))
+              }
+            }}
+            className={`w-full px-3 py-2 rounded border focus:outline-none ${
+              missingFields.includes('category') ? 'border-red-500 bg-red-50 text-red-900' : 'border-gray-600 bg-gray-700 text-white focus:border-white'
+            }`}
           >
             <option value="">Select a category</option>
             {categories.map((cat) => (
@@ -162,11 +198,17 @@ export default function CreatorUploadPage() {
           <input
             type="number"
             value={price}
-            onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
-            className="w-full px-3 py-2 rounded border border-gray-600 bg-gray-700 text-white focus:outline-none focus:border-white"
+            onChange={(e) => {
+              setPrice(e.target.value === '' ? '' : Number(e.target.value))
+              if (missingFields.includes('price')) {
+                setMissingFields(prev => prev.filter(f => f !== 'price'))
+              }
+            }}
+            className={`w-full px-3 py-2 rounded border focus:outline-none ${
+              missingFields.includes('price') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-700 text-white focus:border-white'
+            }`}
             placeholder="Enter course price (min. 50000)"
             min="50000"
-            required
           />
 
           <label className="block text-sm font-medium">Course Thumbnail</label>
@@ -192,7 +234,9 @@ export default function CreatorUploadPage() {
             <button
               type="button"
               onClick={handleAddLesson}
-              className="w-full px-3 py-2 rounded border border-dashed border-gray-600 bg-gray-700 text-white hover:bg-gray-600 transition"
+              className={`w-full px-3 py-2 rounded border border-dashed transition ${
+                missingFields.includes('lessons') ? 'border-red-500 bg-red-50 text-red-900' : 'border-gray-600 bg-gray-700 text-white hover:bg-gray-600'
+              }`}
             >
               + Add Lesson Module
             </button>
@@ -267,11 +311,17 @@ export default function CreatorUploadPage() {
           <label className="block text-sm font-medium">Description</label>
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 rounded border border-gray-600 bg-gray-700 text-white focus:outline-none focus:border-white"
+            onChange={(e) => {
+              setDescription(e.target.value)
+              if (missingFields.includes('description')) {
+                setMissingFields(prev => prev.filter(f => f !== 'description'))
+              }
+            }}
+            className={`w-full px-3 py-2 rounded border focus:outline-none ${
+              missingFields.includes('description') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-700 text-white focus:border-white'
+            }`}
             rows={4}
             placeholder="Enter detailed description for the course..."
-            required
           />
 
           <div className="flex gap-4 mt-2">
@@ -293,9 +343,42 @@ export default function CreatorUploadPage() {
             </button>
           </div>
 
-          {message && <p className="text-sm mt-2">{message}</p>}
+          {message && (
+            <div
+              className={`text-sm mt-4 p-3 rounded text-center font-medium ${
+                messageType === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+              }`}
+            >
+              {message}
+            </div>
+          )}
         </form>
       </div>
+
+      {showPublishConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 p-6 rounded-lg max-w-sm w-full text-center border border-gray-600 shadow-xl">
+            <h2 className="text-xl font-bold mb-4 text-white">Publish Course?</h2>
+            <p className="mb-6 text-gray-300">Are you sure you want to publish this course? Published courses cannot be edited further.</p>
+            <div className="flex gap-4 justify-center">
+              <button 
+                type="button"
+                onClick={() => setShowPublishConfirm(false)} 
+                className="px-4 py-2 border border-gray-500 rounded text-white hover:bg-gray-700 transition"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                onClick={() => { setShowPublishConfirm(false); handleSubmit(undefined, true); }} 
+                className="px-4 py-2 bg-white text-black font-semibold rounded hover:opacity-90 transition"
+              >
+                Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
