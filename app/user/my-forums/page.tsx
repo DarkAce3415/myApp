@@ -11,10 +11,11 @@ interface Forum {
   title: string
   description: string
   topic?: string
-  weeklyLikes?: number
   totalLikes?: number
   liked?: boolean
-  userId?: string
+  userId?: string,
+  isCreator?: boolean,
+  linkedCourseId?: string
 }
 
 export default function MyForumsPage() {
@@ -22,7 +23,6 @@ export default function MyForumsPage() {
   const [forums, setForums] = useState<Forum[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [use7Day, setUse7Day] = useState<boolean>(true)
   const [liking, setLiking] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
@@ -39,16 +39,10 @@ export default function MyForumsPage() {
         const myForumsQuery = query(forumsCollection, where('userId', '==', uid))
         const forumSnapshot = await getDocs(myForumsQuery)
 
-        const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-
         const forumsList = await Promise.all(
           forumSnapshot.docs.map(async (d) => {
             const data = d.data() as any
             const id = d.id
-
-            const likes7Query = query(collection(db, 'forums', id, 'likes'), where('timestamp', '>=', cutoff))
-            const likes7Snapshot = await getDocs(likes7Query)
-            const weeklyLikes = likes7Snapshot.size
 
             const likesAllSnapshot = await getDocs(collection(db, 'forums', id, 'likes'))
             const totalLikes = likesAllSnapshot.size
@@ -64,10 +58,11 @@ export default function MyForumsPage() {
               title: data.title,
               description: data.description,
               topic: data.topic || 'General',
-              weeklyLikes,
               totalLikes,
               liked,
               userId: data.userId,
+              isCreator: data.isCreator || false,
+              linkedCourseId: data.linkedCourseId || null,
             } as Forum
           })
         )
@@ -82,10 +77,6 @@ export default function MyForumsPage() {
 
     fetchMyForums()
   }, [])
-
-  const handleToggle7Day = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUse7Day(e.target.checked)
-  }
 
   const handleToggleLike = async (forumId: string, liked: boolean) => {
     const uid = auth.currentUser?.uid
@@ -112,7 +103,6 @@ export default function MyForumsPage() {
           return {
             ...f,
             liked: !liked,
-            weeklyLikes: (f.weeklyLikes || 0) + (liked ? -1 : 1),
             totalLikes: (f.totalLikes || 0) + (liked ? -1 : 1),
           }
         })
@@ -133,18 +123,19 @@ export default function MyForumsPage() {
     return <div className="p-6 flex justify-center text-red-600">{error}</div>
   }
 
-  const sorted = [...forums].sort((a, b) => ((use7Day ? (b.weeklyLikes || 0) : (b.totalLikes || 0)) - (use7Day ? (a.weeklyLikes || 0) : (a.totalLikes || 0))))
+  const sorted = [...forums].sort((a, b) => ((b.totalLikes || 0) - (a.totalLikes || 0)))
 
   return (
     <div className="min-h-screen bg-white text-black flex flex-col items-center p-6">
       <div className="w-full max-w-4xl flex flex-col gap-6">
+        <div>
+          <button onClick={() => router.push('/user/forums')} className="text-blue-600 hover:text-blue-800">
+            &larr; Back to Main Forums
+          </button>
+        </div>
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">My Forums</h1>
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={use7Day} onChange={handleToggle7Day} />
-              <span className="text-sm text-black">Use 7-day ranking</span>
-            </label>
             <div>
               <Link href="/user/forums/add-forum" className="inline-block">
                 <button className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded">Create Forum</button>
@@ -164,7 +155,15 @@ export default function MyForumsPage() {
                     href={`/user/forums/view-forum/${forum.id}`}
                     className="flex-1"
                   >
-                    <h2 className="text-2xl font-semibold text-black hover:text-black mb-2">{forum.title}</h2>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h2 className="text-2xl font-semibold text-black hover:text-black">{forum.title}</h2>
+                      {forum.isCreator && (
+                          <span className="px-2 py-1 bg-purple-600 text-white text-xs font-semibold rounded">Creator</span>
+                      )}
+                      {forum.linkedCourseId && (
+                          <span className="px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">Course Linked</span>
+                      )}
+                    </div>
                     <div className="border-t border-gray-200 pt-3">
                       <p className="text-black">{forum.description}</p>
                     </div>
@@ -182,7 +181,7 @@ export default function MyForumsPage() {
                         </span>
                       ) : forum.liked ? 'Liked' : 'Like'}
                     </button>
-                    <span className="text-sm text-black">{use7Day ? (forum.weeklyLikes || 0) + ' likes (7d)' : (forum.totalLikes || 0) + ' likes'}</span>
+                    <span className="text-sm text-black">{(forum.totalLikes || 0)} likes</span>
                     <span className="text-xs text-black">Topic: {forum.topic}</span>
                   </div>
                 </div>

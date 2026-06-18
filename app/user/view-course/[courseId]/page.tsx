@@ -125,21 +125,36 @@ export default function UserViewCoursePage() {
     }
   }, [searchParams, handleSuccessfulPurchase, router, courseId]);
 
-  const handleVideoEnded = async () => {
-    if (!userUid || !courseId || watchedVideos.includes(selectedVideoIndex)) return;
+  const lessons = course?.lessons || course?.videoUrls || [];
+
+  const markAsWatched = useCallback((index: number) => {
+    if (!userUid || !courseId) return;
     
-    const newWatched = [...watchedVideos, selectedVideoIndex];
-    setWatchedVideos(newWatched);
-    
-    try {
+    setWatchedVideos((prev) => {
+      if (prev.includes(index)) return prev;
+      
+      const newWatched = [...prev, index];
+      
       const userRef = doc(db, 'users', userUid);
-      await updateDoc(userRef, {
-        [`courseProgress.${courseId}`]: arrayUnion(selectedVideoIndex)
-      });
-    } catch (error) {
-      console.error('Error updating progress:', error);
+      updateDoc(userRef, {
+        [`courseProgress.${courseId}`]: arrayUnion(index)
+      }).catch((error) => console.error('Error updating progress:', error));
+      
+      return newWatched;
+    });
+  }, [userUid, courseId]);
+
+  useEffect(() => {
+    if (!course) return;
+    
+    const currentLessons = course.lessons || course.videoUrls || [];
+    
+    if (currentLessons.length > 0 && currentLessons[selectedVideoIndex] && !currentLessons[selectedVideoIndex].url) {
+      markAsWatched(selectedVideoIndex);
     }
-  }
+  }, [selectedVideoIndex, course, markAsWatched]);
+
+  const handleVideoEnded = () => markAsWatched(selectedVideoIndex);
 
   const handleRatingSubmit = async (newRating: number) => {
     if (!isPurchased) {
@@ -222,19 +237,33 @@ export default function UserViewCoursePage() {
     }
   }
 
+  const formatDuration = (seconds: number) => {
+    if (!seconds) return '0s';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) {
+      return `${h}h ${m}m ${s}s`;
+    }
+    if (m > 0) {
+      return `${m}m ${s}s`;
+    }
+    return `${s}s`;
+  };
+  const totalDuration = lessons.reduce((acc: number, lesson: any) => acc + (lesson.duration || 0), 0);
+  const upNextIndex = lessons.findIndex((_: any, index: number) => !watchedVideos.includes(index));
+
   if (loading) return <div className="p-6 flex justify-center">Loading...</div>
   if (!course) return <div className="p-6 flex justify-center">Course not found</div>
   if (course.status !== 'Published' && !isPurchased) return <div className="p-6 flex justify-center">This course is not currently available.</div>
 
-  const lessons = course.lessons || course.videoUrls || [];
-
   return (
-    <div className="min-h-screen bg-white text-black flex flex-col items-center p-6">
-      <div className="w-full max-w-4xl flex flex-col gap-6">
+    <div className="min-h-screen bg-gray-50 text-black flex flex-col items-center p-6">
+      <div className="w-full max-w-6xl flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <button 
-            onClick={() => router.push('/user/owned-courses')}
-            className="w-fit px-4 py-2 border border-black rounded hover:bg-gray-100 transition"
+            onClick={() => router.push('/user')}
+            className="w-fit px-4 py-2 border border-black rounded hover:bg-gray-100 transition bg-white"
           >
             Back to Courses
           </button>
@@ -251,58 +280,90 @@ export default function UserViewCoursePage() {
 
         <h1 className="text-3xl font-bold">{course.title}</h1>
         
-        <div className="w-full flex gap-6">
-          <div className="flex-grow">
-            <div className="w-full aspect-video bg-black rounded overflow-hidden flex items-center justify-center shadow-lg">
-              {lessons.length > 0 && lessons[selectedVideoIndex]?.url ? (
-                <video
-                  src={lessons[selectedVideoIndex].url}
-                  className="w-full h-full"
-                  controls
-                  controlsList="nodownload"
-                  onEnded={handleVideoEnded}
-                />
-              ) : course.videoUrl ? (
-                <video
-                  src={course.videoUrl}
-                  className="w-full h-full"
-                  controls
-                  controlsList="nodownload"
-                  onEnded={handleVideoEnded}
-                />
-              ) : (
-                <span className="text-white">No video available</span>
+        <div className="w-full flex flex-col lg:flex-row gap-6 items-start">
+          {/* Left Card: Video, Rating, Content, Description */}
+          <div className="flex-grow bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex flex-col gap-6 w-full lg:w-auto">
+            <div>
+              <div className="w-full aspect-video bg-black rounded overflow-hidden flex items-center justify-center shadow-lg">
+                {lessons.length > 0 && lessons[selectedVideoIndex]?.url ? (
+                  <video
+                    src={lessons[selectedVideoIndex].url}
+                    className="w-full h-full"
+                    controls
+                    controlsList="nodownload"
+                    onEnded={handleVideoEnded}
+                  />
+                ) : course.videoUrl ? (
+                  <video
+                    src={course.videoUrl}
+                    className="w-full h-full"
+                    controls
+                    controlsList="nodownload"
+                    onEnded={handleVideoEnded}
+                  />
+                ) : (
+                  <span className="text-white">No video available</span>
+                )}
+              </div>
+              {lessons.length > 0 && (
+                <h2 className="text-2xl font-bold mt-4">{lessons[selectedVideoIndex]?.title || 'Untitled Video'}</h2>
+              )}
+              {lessons.length > 0 && lessons[selectedVideoIndex]?.description && (
+                <p className="text-gray-700 mt-2 whitespace-pre-wrap">{lessons[selectedVideoIndex].description}</p>
               )}
             </div>
-            {lessons.length > 0 && (
-              <p className="text-gray-600 mt-2">{lessons[selectedVideoIndex]?.title || 'Untitled Video'}</p>
+
+            {isPurchased && (
+              <div className="flex flex-col gap-2 pt-6 border-t border-gray-100">
+                <h2 className="text-xl font-semibold">Rate this Course</h2>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <svg
+                        key={star}
+                        className={`w-6 h-6 cursor-pointer transition ${star <= rating ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-300`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                        onClick={() => handleRatingSubmit(star)}
+                      ><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.538 1.118l-2.8-2.034a1 1 0 00-1.176 0l-2.8 2.034c-.783.57-1.838-.197-1.538-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.381-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z" /></svg>
+                    ))}
+                  </div>
+                  {ratingSubmitted && <span className="text-green-600 text-sm font-medium">Rating saved!</span>}
+                </div>
+              </div>
             )}
-            {lessons.length > 0 && lessons[selectedVideoIndex]?.description && (
-              <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{lessons[selectedVideoIndex].description}</p>
-            )}
+
+            <div className="flex flex-col gap-2 pt-6 border-t border-gray-100">
+              <h2 className="text-xl font-semibold">Description</h2>
+              <p className="text-gray-700 whitespace-pre-wrap">{course.description}</p>
+            </div>
           </div>
 
           {/* Video Selector */}
           {lessons.length > 0 && (
-            <div className="w-80 bg-gray-50 rounded-xl p-5 border border-gray-200 flex flex-col gap-4 shadow-sm shrink-0">
-              <div className="flex flex-col gap-3">
+            <div className="w-full lg:w-96 bg-white rounded-xl p-5 border border-gray-200 flex flex-col shadow-sm shrink-0 sticky top-6 max-h-[calc(100vh-3rem)]">
+              <div className="flex flex-col gap-1 shrink-0 mb-1">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-xl">Course Content</h3>
                   <span className="text-sm font-medium text-gray-500">
                     {watchedVideos.length}/{lessons.length} Watched
                   </span>
                 </div>
-                
-                {/* Progress Bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden mb-2">
-                  <div 
-                    className="bg-black h-2 rounded-full transition-all duration-500 ease-out" 
-                    style={{ width: `${(watchedVideos.length / lessons.length) * 100}%` }}
-                  ></div>
-                </div>
+                {totalDuration > 0 && (
+                  <span className="text-sm font-medium text-gray-500">Total Time: {formatDuration(totalDuration)}</span>
+                )}
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden mt-2 mb-4 shrink-0">
+                <div 
+                  className="bg-black h-2 rounded-full transition-all duration-500 ease-out" 
+                  style={{ width: `${(watchedVideos.length / lessons.length) * 100}%` }}
+                ></div>
+              </div>
 
-                <div className="flex flex-col gap-3 max-h-[450px] overflow-y-auto pr-1">
-                  {lessons.map((lesson: any, index: number) => (
+              <div className="flex flex-col gap-3 overflow-y-auto pr-2 pb-2 flex-grow">
+                {lessons.map((lesson: any, index: number) => (
                     <button
                       key={index}
                       onClick={() => handleVideoSelect(index)}
@@ -325,43 +386,31 @@ export default function UserViewCoursePage() {
                               <span className="text-sm font-semibold">{index + 1}</span>
                             )}
                           </div>
-                          <span className="font-medium text-sm line-clamp-2">{lesson.title || `Lesson ${index + 1}`}</span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-medium text-sm line-clamp-2 text-left">{lesson.title || `Lesson ${index + 1}`}</span>
+                          {index === upNextIndex && (
+                            <span className="px-2 py-[2px] text-[10px] font-bold bg-blue-100 text-blue-800 rounded uppercase tracking-wider">
+                              Up Next
+                            </span>
+                          )}
                         </div>
-                        {!isPurchased && index > 0 && (
-                          <svg className={`w-5 h-5 shrink-0 ml-2 ${selectedVideoIndex === index ? 'text-white/70' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                        )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {lesson.duration > 0 && (
+                            <span className={`text-xs whitespace-nowrap ${selectedVideoIndex === index ? 'text-gray-200' : 'text-gray-500'}`}>
+                              {formatDuration(lesson.duration)}
+                            </span>
+                          )}
+                          {!isPurchased && index > 0 && (
+                            <svg className={`w-5 h-5 shrink-0 ${selectedVideoIndex === index ? 'text-white/70' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                          )}
+                        </div>
                       </div>
                     </button>
                   ))}
                 </div>
-              </div>
             </div>
           )}
-        </div>
-
-        {isPurchased && (
-          <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-semibold">Rate this Course</h2>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <svg
-                    key={star}
-                    className={`w-6 h-6 cursor-pointer transition ${star <= rating ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-300`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                    onClick={() => handleRatingSubmit(star)}
-                  ><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.538 1.118l-2.8-2.034a1 1 0 00-1.176 0l-2.8 2.034c-.783.57-1.838-.197-1.538-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.381-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z" /></svg>
-                ))}
-              </div>
-              {ratingSubmitted && <span className="text-green-600 text-sm font-medium">Rating saved!</span>}
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-2">
-          <h2 className="text-xl font-semibold">Description</h2>
-          <p className="text-gray-700 whitespace-pre-wrap">{course.description}</p>
         </div>
         
       </div>

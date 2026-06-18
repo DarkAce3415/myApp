@@ -15,7 +15,6 @@ interface Forum {
     liked?: boolean;
     isCreator?: boolean;
     linkedCourseId?: string;
-    hasAccess?: boolean;
 } 
 
 export default function CreatorForumsPage() {
@@ -82,6 +81,10 @@ export default function CreatorForumsPage() {
                             }
                         }
 
+                        if (!hasAccess) {
+                            return null;
+                        }
+
                         return {
                             id,
                             title: data.title,
@@ -92,7 +95,6 @@ export default function CreatorForumsPage() {
                             liked,
                             isCreator: data.isCreator || false,
                             linkedCourseId: data.linkedCourseId || null,
-                            hasAccess,
                         } as Forum;
                     })
                 );
@@ -127,12 +129,6 @@ export default function CreatorForumsPage() {
         const uid = auth.currentUser?.uid;
         if (!uid) {
             alert('Please sign in to like forums.');
-            return;
-        }
-
-        const forumTarget = forums.find(f => f.id === forumId);
-        if (forumTarget && forumTarget.hasAccess === false) {
-            alert('Access denied! You cannot like a forum you do not have access to.');
             return;
         }
 
@@ -182,8 +178,12 @@ export default function CreatorForumsPage() {
                     <h1 className="text-2xl font-bold">Creator Forums</h1>
                     <div className="flex items-center gap-4">
                         <input type="text" placeholder="Search by title..." value={searchQuery} onChange={handleSearchChange} className="border border-gray-600 rounded p-1 bg-gray-800 text-white" />
-                        <label className="flex items-center gap-2">
-                            <input type="checkbox" checked={use7Day} onChange={handleToggle7Day} />
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <div className="relative">
+                                <input type="checkbox" className="sr-only" checked={use7Day} onChange={handleToggle7Day} />
+                                <div className={`block w-10 h-6 rounded-full transition ${use7Day ? 'bg-blue-600' : 'bg-gray-600'}`}></div>
+                                <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform ${use7Day ? 'translate-x-4' : ''}`}></div>
+                            </div>
                             <span className="text-sm text-white">Use 7-day ranking</span>
                         </label>
                         <div>
@@ -212,8 +212,11 @@ export default function CreatorForumsPage() {
                     <ul className="space-y-4">
                         {filtered.map((forum) => (
                             <div key={forum.id} className="flex justify-center">
-                                <li className={`w-full border border-gray-600 bg-gray-800 rounded-lg p-4 shadow-md hover:bg-gray-750 transition ${forum.hasAccess === false ? 'opacity-50 grayscale' : ''}`}>
-                                    <Link href={`/creator-main-page/forums/view-forums/${forum.id}`} className="block">
+                                <li className={`w-full border border-gray-600 bg-gray-800 rounded-lg p-4 shadow-md hover:bg-gray-750 transition`}>
+                                    <Link 
+                                        href={`/creator-main-page/forums/view-forums/${forum.id}`} 
+                                        className="block"
+                                    >
                                         <div className="flex items-center gap-2 mb-2">
                                             <h2 className="text-xl font-semibold text-white">{forum.title}</h2>
                                             {forum.isCreator && (
@@ -229,8 +232,8 @@ export default function CreatorForumsPage() {
                                         <div className="flex items-center gap-3">
                                             <button 
                                             onClick={() => handleToggleLike(forum.id, !!forum.liked)} 
-                                            disabled={!!liking[forum.id] || forum.hasAccess === false}
-                                            className={`px-3 py-1 rounded ${forum.liked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} ${(liking[forum.id] || forum.hasAccess === false) ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                                            disabled={!!liking[forum.id]}
+                                            className={`px-3 py-1 rounded ${forum.liked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} ${liking[forum.id] ? 'opacity-60 cursor-not-allowed' : ''}`}>
                                             {liking[forum.id] ? (
                                                 <span className="inline-flex items-center gap-2">
                                                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

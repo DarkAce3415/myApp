@@ -37,7 +37,9 @@ export default function CreateForumPage() {
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -67,6 +69,9 @@ export default function CreateForumPage() {
       ...prevData,
       [name]: value,
     }));
+    if (missingFields.includes(name)) {
+      setMissingFields((prev) => prev.filter((field) => field !== name));
+    }
   };
 
   const slugify = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '')
@@ -75,6 +80,20 @@ export default function CreateForumPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
+    setMissingFields([]);
+
+    const newMissingFields: string[] = [];
+    if (!formData.title.trim()) newMissingFields.push('title');
+    if (!formData.topic) newMissingFields.push('topic');
+    if (!formData.description.trim()) newMissingFields.push('description');
+
+    if (newMissingFields.length > 0) {
+      setError('Please fill in all required fields.');
+      setMissingFields(newMissingFields);
+      setLoading(false);
+      return;
+    }
 
     try {
       const forumPayload = {
@@ -96,10 +115,12 @@ export default function CreateForumPage() {
         count: increment(1),
       }, { merge: true });
 
-      router.push('/creator-main-page/forums'); // Redirect to the forums list after creation
+      setSuccess('Forum created successfully! Redirecting...');
+      setTimeout(() => {
+        router.push('/creator-main-page/forums'); // Redirect to the forums list after creation
+      }, 1500);
     } catch (err: any) {
       setError('Failed to create forum: ' + err.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -111,19 +132,22 @@ export default function CreateForumPage() {
           &larr; Back
         </button>
         <h1 className="text-2xl font-bold mb-4 text-center">Create New Forum</h1>
-        <form onSubmit={handleSubmit} className="bg-gray-800 rounded px-8 pt-6 pb-8 mb-4 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-gray-800 rounded px-8 pt-6 pb-8 mb-4 space-y-4" noValidate>
           <div className="mb-4">
-            <label htmlFor="title" className="block text-white text-sm font-bold mb-2">
-              Forum Title:
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label htmlFor="title" className="block text-white text-sm font-bold">
+                Forum Title:
+              </label>
+              <span className="text-xs text-gray-400">{formData.title.length}/75</span>
+            </div>
             <input
               type="text"
               id="title"
               name="title"
+              maxLength={75}
               value={formData.title}
               onChange={handleChange}
-              className="shadow appearance-none border border-gray-600 bg-gray-700 text-white rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline"
-              required
+              className={`shadow appearance-none border rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline ${missingFields.includes('title') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-700 text-white'}`}
             />
           </div>
 
@@ -136,7 +160,7 @@ export default function CreateForumPage() {
               name="topic"
               value={formData.topic}
               onChange={handleChange}
-              className="border border-gray-600 bg-gray-700 text-white rounded w-full py-2 px-3"
+              className={`border rounded w-full py-2 px-3 ${missingFields.includes('topic') ? 'border-red-500 bg-red-50 text-red-900' : 'border-gray-600 bg-gray-700 text-white'}`}
             >
               {topics.map((t) => (
                 <option value={t} key={t}>{t}</option>
@@ -163,19 +187,31 @@ export default function CreateForumPage() {
           </div>
 
           <div className="mb-6">
-            <label htmlFor="description" className="block text-white text-sm font-bold mb-2">
-              Description:
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label htmlFor="description" className="block text-white text-sm font-bold">
+                Description:
+              </label>
+              <span className="text-xs text-gray-400">{formData.description.length}/300</span>
+            </div>
             <textarea
               id="description"
               name="description"
+              maxLength={300}
               value={formData.description}
               onChange={handleChange}
-              className="shadow appearance-none border border-gray-600 bg-gray-700 text-white rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline h-32"
-              required
+              className={`shadow appearance-none border rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline h-32 ${missingFields.includes('description') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-700 text-white'}`}
             ></textarea>
           </div>
-          {error && <p className="text-red-400 text-xs italic mb-4">{error}</p>}
+          {error && (
+            <div className="bg-red-900/50 border border-red-500 text-red-200 text-sm p-3 rounded mb-4 text-center font-medium shadow-sm">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-900/50 border border-green-500 text-green-200 text-sm p-3 rounded mb-4 text-center font-medium shadow-sm">
+              {success}
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <button
               type="submit"

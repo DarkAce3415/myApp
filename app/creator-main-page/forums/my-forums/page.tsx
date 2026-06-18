@@ -11,7 +11,6 @@ interface Forum {
   title: string
   description: string
   topic?: string
-  weeklyLikes?: number
   totalLikes?: number
   liked?: boolean
   userId?: string
@@ -23,7 +22,6 @@ export default function CreatorMyForumsPage() {
   const [forums, setForums] = useState<Forum[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [use7Day, setUse7Day] = useState<boolean>(true)
   const [liking, setLiking] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
@@ -40,16 +38,10 @@ export default function CreatorMyForumsPage() {
         const myForumsQuery = query(forumsCollection, where('userId', '==', uid), where('isCreator', '==', true))
         const forumSnapshot = await getDocs(myForumsQuery)
 
-        const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-
         const forumsList = await Promise.all(
           forumSnapshot.docs.map(async (d) => {
             const data = d.data() as any
             const id = d.id
-
-            const likes7Query = query(collection(db, 'forums', id, 'likes'), where('timestamp', '>=', cutoff))
-            const likes7Snapshot = await getDocs(likes7Query)
-            const weeklyLikes = likes7Snapshot.size
 
             const likesAllSnapshot = await getDocs(collection(db, 'forums', id, 'likes'))
             const totalLikes = likesAllSnapshot.size
@@ -65,7 +57,6 @@ export default function CreatorMyForumsPage() {
               title: data.title,
               description: data.description,
               topic: data.topic || 'General',
-              weeklyLikes,
               totalLikes,
               liked,
               userId: data.userId,
@@ -84,10 +75,6 @@ export default function CreatorMyForumsPage() {
 
     fetchMyForums()
   }, [])
-
-  const handleToggle7Day = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUse7Day(e.target.checked)
-  }
 
   const handleToggleLike = async (forumId: string, liked: boolean) => {
     const uid = auth.currentUser?.uid
@@ -114,7 +101,6 @@ export default function CreatorMyForumsPage() {
           return {
             ...f,
             liked: !liked,
-            weeklyLikes: (f.weeklyLikes || 0) + (liked ? -1 : 1),
             totalLikes: (f.totalLikes || 0) + (liked ? -1 : 1),
           }
         })
@@ -135,18 +121,19 @@ export default function CreatorMyForumsPage() {
     return <div className="p-6 flex justify-center text-red-400 bg-gray-900 min-h-screen">{error}</div>
   }
 
-  const sorted = [...forums].sort((a, b) => ((use7Day ? (b.weeklyLikes || 0) : (b.totalLikes || 0)) - (use7Day ? (a.weeklyLikes || 0) : (a.totalLikes || 0))))
+  const sorted = [...forums].sort((a, b) => ((b.totalLikes || 0) - (a.totalLikes || 0)))
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-6">
       <div className="w-full max-w-4xl flex flex-col gap-6">
+        <div>
+          <button onClick={() => router.push('/creator-main-page/forums')} className="text-blue-400 hover:text-blue-300">
+            &larr; Back to Main Forums
+          </button>
+        </div>
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">My Forums</h1>
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={use7Day} onChange={handleToggle7Day} />
-              <span className="text-sm text-white">Use 7-day ranking</span>
-            </label>
             <div>
               <Link href="/creator-main-page/forums/add-forums" className="inline-block">
                 <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded">Create Forum</button>
@@ -189,7 +176,7 @@ export default function CreatorMyForumsPage() {
                         </span>
                       ) : forum.liked ? 'Liked' : 'Like'}
                     </button>
-                    <span className="text-sm text-white">{use7Day ? (forum.weeklyLikes || 0) + ' likes (7d)' : (forum.totalLikes || 0) + ' likes'}</span>
+                    <span className="text-sm text-white">{(forum.totalLikes || 0)} likes</span>
                     <span className="text-xs text-white">Topic: {forum.topic}</span>
                   </div>
                 </div>
