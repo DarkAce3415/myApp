@@ -10,11 +10,15 @@ interface LessonData {
   title: string;
   description: string;
   url?: string;
+  duration?: number;
 }
 
 export default function CreatorUploadPage() {
   const router = useRouter()
-  const [lessons, setLessons] = useState<LessonData[]>([])
+  const [lessons, setLessons] = useState<LessonData[]>([
+    { title: 'Lesson 1', description: '' },
+    { title: 'Lesson 2', description: '' }
+  ])
   const [description, setDescription] = useState('')
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
@@ -90,7 +94,10 @@ export default function CreatorUploadPage() {
       setCourseThumbnail(null)
       setPrice(50000)
       router.push('/creator-main-page') 
-      setLessons([]);
+      setLessons([
+        { title: 'Lesson 1', description: '' },
+        { title: 'Lesson 2', description: '' }
+      ]);
     } catch (err: any) {
       setMessage(err?.message || 'Upload failed.')
       setMessageType('error')
@@ -101,6 +108,11 @@ export default function CreatorUploadPage() {
   }
 
   const handleAddLesson = () => {
+    if (lessons.length >= 15) {
+      setMessage('Maximum of 15 lesson modules allowed.')
+      setMessageType('error')
+      return
+    }
     setLessons((prevLessons) => [
       ...prevLessons,
       { title: `Lesson ${prevLessons.length + 1}`, description: '' },
@@ -126,15 +138,18 @@ export default function CreatorUploadPage() {
     });
   };
 
-  const handleLessonVideoUpload = (index: number, url: string) => {
+  const handleLessonVideoUpload = (index: number, url: string, filename: string, duration: number) => {
     setLessons(prevLessons => {
       const newLessons = [...prevLessons];
-      newLessons[index] = { ...newLessons[index], url };
+      newLessons[index] = { ...newLessons[index], url, duration };
       return newLessons;
     });
+    setMessage(`Uploaded: ${filename}`);
+    setMessageType('success');
   };
 
   const handleDeleteLesson = (indexToDelete: number) => {
+    if (indexToDelete < 2) return; // The first two modules cannot be deleted
     if (window.confirm('Are you sure you want to delete this lesson?')) {
       setLessons((prevLessons) => prevLessons.filter((_, index) => index !== indexToDelete));
     }
@@ -157,11 +172,16 @@ export default function CreatorUploadPage() {
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-gray-800 text-white rounded-lg shadow-lg p-8">
         <h1 className="text-2xl font-bold mb-4 text-center">Upload Course</h1>
+        <p className="text-sm text-gray-400 text-center mb-4">Fields marked with <span className="text-red-500">*</span> are required.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <label className="block text-sm font-medium">Course Title</label>
+          <div className="flex justify-between items-center">
+            <label className="block text-sm font-medium">Course Title <span className="text-red-500">*</span></label>
+            <span className="text-xs text-gray-400">{title.length}/75</span>
+          </div>
           <input
             type="text"
+            maxLength={75}
             value={title}
             onChange={(e) => {
               setTitle(e.target.value)
@@ -175,7 +195,7 @@ export default function CreatorUploadPage() {
             placeholder="Enter course title"
           />
 
-          <label className="block text-sm font-medium">Category</label>
+          <label className="block text-sm font-medium">Category <span className="text-red-500">*</span></label>
           <select
             value={category}
             onChange={(e) => {
@@ -194,7 +214,7 @@ export default function CreatorUploadPage() {
             ))}
           </select>
 
-          <label className="block text-sm font-medium">Price (IDR)</label>
+          <label className="block text-sm font-medium">Price (IDR) <span className="text-red-500">*</span></label>
           <input
             type="number"
             value={price}
@@ -216,7 +236,11 @@ export default function CreatorUploadPage() {
             {courseThumbnail && (
               <img src={courseThumbnail} alt="Course Thumbnail" className="w-24 h-16 object-cover rounded" />
             )}
-            <CldUploadWidget uploadPreset="next_js_cloudinary" onSuccess={(result: any) => setCourseThumbnail(result.info.secure_url)}>
+            <CldUploadWidget uploadPreset="next_js_cloudinary" onSuccess={(result: any) => {
+              setCourseThumbnail(result.info.secure_url);
+              setMessage(`Uploaded: ${result.info.original_filename}`);
+              setMessageType('success');
+            }}>
               {({ open }) => (
                 <button
                   type="button"
@@ -230,13 +254,17 @@ export default function CreatorUploadPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium">Course Lessons</label>
+            <div className="flex justify-between items-center">
+              <label className="block text-sm font-medium">Course Lessons <span className="text-red-500">*</span></label>
+              <span className="text-xs text-gray-400">{lessons.length}/15</span>
+            </div>
             <button
               type="button"
               onClick={handleAddLesson}
+              disabled={lessons.length >= 15}
               className={`w-full px-3 py-2 rounded border border-dashed transition ${
                 missingFields.includes('lessons') ? 'border-red-500 bg-red-50 text-red-900' : 'border-gray-600 bg-gray-700 text-white hover:bg-gray-600'
-              }`}
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               + Add Lesson Module
             </button>
@@ -249,13 +277,15 @@ export default function CreatorUploadPage() {
                 <div key={index} className="border border-gray-600 bg-gray-700 rounded p-3 flex flex-col gap-2">
                   <div className="flex justify-between items-center">
                     <p className="font-bold">Lesson {index + 1}</p>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteLesson(index)}
-                      className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                    >
-                      Delete
-                    </button>
+                    {index >= 2 && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLesson(index)}
+                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                   <input
                     type="text"
@@ -292,8 +322,9 @@ export default function CreatorUploadPage() {
                       </button>
                     </div>
                     <CldUploadWidget
+                      options={{ resourceType: 'video' }}
                       uploadPreset="next_js_cloudinary"
-                      onSuccess={(result: any) => handleLessonVideoUpload(index, result.info.secure_url)}
+                      onSuccess={(result: any) => handleLessonVideoUpload(index, result.info.secure_url, result.info.original_filename, result.info.duration)}
                     >
                       {({ open }) => (
                         <button type="button" onClick={() => open()} className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition">
@@ -302,15 +333,18 @@ export default function CreatorUploadPage() {
                       )}
                     </CldUploadWidget>
                   </div>
-                  {lesson.url && <p className="text-xs text-green-400 truncate mt-1">Video Uploaded</p>}
                 </div>
               ))}
             </div>
           )}
 
-          <label className="block text-sm font-medium">Description</label>
+          <div className="flex justify-between items-center">
+            <label className="block text-sm font-medium">Description <span className="text-red-500">*</span></label>
+            <span className="text-xs text-gray-400">{description.length}/300</span>
+          </div>
           <textarea
             value={description}
+            maxLength={300}
             onChange={(e) => {
               setDescription(e.target.value)
               if (missingFields.includes('description')) {

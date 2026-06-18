@@ -39,6 +39,7 @@ export default function EditCoursePage() {
   const [status, setStatus] = useState<'Published' | 'Drafted'>('Drafted');
   const [students, setStudents] = useState<Student[]>([])
   const [showPublishConfirm, setShowPublishConfirm] = useState(false)
+  const [initialLessonCount, setInitialLessonCount] = useState(0)
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -61,6 +62,9 @@ export default function EditCoursePage() {
           setCourseThumbnail(data.courseThumbnail || null);
           setPrice(data.price || '');
           setStatus(data.status || 'Drafted');
+          if (data.status === 'Published') {
+            setInitialLessonCount(fetchedLessons.length);
+          }
 
           const purchasedBy: string[] = data.purchasedBy || []
           if (purchasedBy.length > 0) {
@@ -121,7 +125,7 @@ export default function EditCoursePage() {
         return;
       }
 
-      if (!skipConfirm) {
+      if (!skipConfirm && status !== 'Published') {
         setShowPublishConfirm(true);
         return;
       }
@@ -138,6 +142,9 @@ export default function EditCoursePage() {
         status: newStatus,
       })
       setStatus(newStatus)
+      if (newStatus === 'Published') {
+        setInitialLessonCount(lessons.length)
+      }
       setMessage(`Course ${newStatus === 'Published' ? 'published' : 'draft saved'} successfully! Redirecting...`)
       setMessageType('success')
       setTimeout(() => {
@@ -148,7 +155,7 @@ export default function EditCoursePage() {
       setMessage('Failed to update course.')
       setMessageType('error')
     }
-  }, [courseId, title, description, lessons, courseThumbnail, router, category, price])
+  }, [courseId, title, description, lessons, courseThumbnail, router, category, price, status])
 
   const handleDeleteCourse = useCallback(async () => {
     if (!courseId) return;
@@ -184,13 +191,13 @@ export default function EditCoursePage() {
     });
   }, []);
 
-  const handleLessonVideoUpload = useCallback((index: number, url: string, duration?: number) => {
+  const handleLessonVideoUpload = useCallback((index: number, url: string, filename: string, duration?: number) => {
     setLessons((prevLessons) => {
       const newLessons = [...prevLessons];
       newLessons[index] = { ...newLessons[index], url, duration };
       return newLessons;
     });
-    setMessage('Video uploaded for lesson. Remember to save changes.');
+    setMessage(`Uploaded: ${filename}. Remember to save changes.`);
     setMessageType('success');
   }, []);
 
@@ -217,6 +224,11 @@ export default function EditCoursePage() {
   }, [])
   
   const handleAddLesson = useCallback(() => {
+    if (lessons.length >= 15) {
+      setMessage('Maximum of 15 lesson modules allowed.');
+      setMessageType('error');
+      return;
+    }
     setLessons((prevLessons) => [
       ...prevLessons,
       { title: `Lesson ${prevLessons.length + 1}`, description: '' },
@@ -224,19 +236,52 @@ export default function EditCoursePage() {
     setMessage('New lesson added. Remember to save changes.');
     setMessageType('success');
     setMissingFields(prev => prev.filter(f => f !== 'lessons'));
-  }, []);
+  }, [lessons.length]);
 
-  const handleCourseThumbnailUpload = useCallback((url: string) => {
+  const handleCourseThumbnailUpload = useCallback((url: string, filename: string) => {
     setCourseThumbnail(url);
-    setMessage('Course thumbnail uploaded. Remember to save changes.');
+    setMessage(`Uploaded: ${filename}. Remember to save changes.`);
     setMessageType('success');
   }, []);
   
+  const handleExportCSV = useCallback(() => {
+    if (students.length === 0) {
+      alert('No students to export.');
+      return;
+    }
+
+    const headers = ['User ID', 'Username', 'Email', 'Payment Amount (IDR)'];
+    const rows = students.map(student => [
+      student.id,
+      `"${student.username.replace(/"/g, '""')}"`,
+      `"${student.email.replace(/"/g, '""')}"`,
+      price || 0
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `students_course_${courseId}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [students, price, courseId]);
+
   const formatDuration = (seconds: number) => {
-    if (!seconds) return '0:00';
-    const m = Math.floor(seconds / 60);
+    if (!seconds) return '0s';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
+    if (h > 0) {
+      return `${h}h ${m}m ${s}s`;
+    }
+    if (m > 0) {
+      return `${m}m ${s}s`;
+    }
+    return `${s}s`;
   };
   const totalDuration = lessons.reduce((acc, lesson) => acc + (lesson.duration || 0), 0);
 
@@ -254,28 +299,36 @@ export default function EditCoursePage() {
         </div>
         
         <div className="flex flex-col gap-2">
-          <label className="font-semibold">Title</label>
+          <div className="flex justify-between items-center">
+            <label className="font-semibold">Title</label>
+            <span className="text-xs text-gray-400">{title.length}/75</span>
+          </div>
           <input 
             type="text" 
+            maxLength={75}
             value={title} 
             onChange={(e) => {
               setTitle(e.target.value)
               if (missingFields.includes('title')) setMissingFields(prev => prev.filter(f => f !== 'title'))
             }}
-            className={`border rounded p-2 focus:outline-none ${missingFields.includes('title') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-800 text-white focus:border-white'}`}
+          className={`border rounded p-2 focus:outline-none ${missingFields.includes('title') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-800 text-white focus:border-white'}`}
             placeholder="Course Title"
           />
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="font-semibold">Description</label>
+          <div className="flex justify-between items-center">
+            <label className="font-semibold">Description</label>
+            <span className="text-xs text-gray-400">{description.length}/300</span>
+          </div>
           <textarea 
             value={description} 
+            maxLength={300}
             onChange={(e) => {
               setDescription(e.target.value)
               if (missingFields.includes('description')) setMissingFields(prev => prev.filter(f => f !== 'description'))
             }}
-            className={`border rounded p-2 h-32 focus:outline-none ${missingFields.includes('description') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-800 text-white focus:border-white'}`}
+          className={`border rounded p-2 h-32 focus:outline-none ${missingFields.includes('description') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-800 text-white focus:border-white'}`}
             placeholder="Course Description"
           />
         </div>
@@ -288,7 +341,7 @@ export default function EditCoursePage() {
               setCategory(e.target.value)
               if (missingFields.includes('category')) setMissingFields(prev => prev.filter(f => f !== 'category'))
             }}
-            className={`border rounded p-2 focus:outline-none ${missingFields.includes('category') ? 'border-red-500 bg-red-50 text-red-900' : 'border-gray-600 bg-gray-800 text-white focus:border-white'}`}
+          className={`border rounded p-2 focus:outline-none ${missingFields.includes('category') ? 'border-red-500 bg-red-50 text-red-900' : 'border-gray-600 bg-gray-800 text-white focus:border-white'}`}
           >
             <option value="">Select a category</option>
             {['IoT', 'Deep Learning', 'Video Recognition', 'Machine Learning', 'Natural Language Processing', 'Robotics'].map((cat) => (
@@ -305,7 +358,8 @@ export default function EditCoursePage() {
               setPrice(e.target.value === '' ? '' : Number(e.target.value))
               if (missingFields.includes('price')) setMissingFields(prev => prev.filter(f => f !== 'price'))
             }}
-            className={`border rounded p-2 focus:outline-none ${missingFields.includes('price') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-800 text-white focus:border-white'}`}
+          disabled={status === 'Published'}
+          className={`border rounded p-2 focus:outline-none ${missingFields.includes('price') ? 'border-red-500 bg-red-50 text-red-900 placeholder-red-400' : 'border-gray-600 bg-gray-800 text-white focus:border-white'} ${status === 'Published' ? 'opacity-60 cursor-not-allowed' : ''}`}
             placeholder="Course Price (min. 50000)"
             min="50000"
           />
@@ -317,7 +371,7 @@ export default function EditCoursePage() {
             {courseThumbnail && (
               <img src={courseThumbnail} alt="Course Thumbnail" className="w-32 h-20 object-cover rounded" />
             )}
-            <CldUploadWidget uploadPreset="next_js_cloudinary" onSuccess={(result: any) => handleCourseThumbnailUpload(result.info.secure_url)}>
+            <CldUploadWidget uploadPreset="next_js_cloudinary" onSuccess={(result: any) => handleCourseThumbnailUpload(result.info.secure_url, result.info.original_filename)}>
               {({ open }) => (
                 <button
                   type="button"
@@ -334,20 +388,22 @@ export default function EditCoursePage() {
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-end mb-2">
             <div>
-              <label className="font-semibold block">Course Lessons</label>
+              <div className="flex items-center gap-2">
+                <label className="font-semibold block">Course Lessons</label>
+                <span className="text-xs text-gray-400">{lessons.length}/15</span>
+              </div>
               {totalDuration > 0 && <span className="text-sm text-gray-400">Total Duration: {formatDuration(totalDuration)}</span>}
             </div>
-            {status !== 'Published' && (
-              <button
-                type="button"
-                onClick={handleAddLesson}
-                className={`px-3 py-1 text-sm border border-dashed rounded transition ${
-                  missingFields.includes('lessons') ? 'border-red-500 bg-red-50 text-red-900' : 'bg-gray-800 text-white border-gray-600 hover:bg-gray-700'
-                }`}
-              >
-                + Add Lesson Module
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleAddLesson}
+              disabled={lessons.length >= 15}
+              className={`px-3 py-1 text-sm border border-dashed rounded transition ${
+                missingFields.includes('lessons') ? 'border-red-500 bg-red-50 text-red-900' : 'bg-gray-800 text-white border-gray-600 hover:bg-gray-700'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              + Add Lesson Module
+            </button>
           </div>
           
           {lessons.length === 0 ? (
@@ -358,7 +414,7 @@ export default function EditCoursePage() {
                 <div key={index} className="border border-gray-600 bg-gray-800 rounded p-3 flex flex-col gap-2">
                   <div className="flex justify-between items-center mb-1">
                     <p className="font-bold text-sm">Lesson {index + 1}</p>
-                    {status !== 'Published' && (
+                    {(status !== 'Published' || index >= initialLessonCount) && (
                       <button
                         type="button"
                         onClick={() => handleDeleteLesson(index)}
@@ -373,25 +429,26 @@ export default function EditCoursePage() {
                       type="text"
                       value={lesson.title}
                       onChange={(e) => handleLessonTitleChange(index, e.target.value)}
-                      className="border border-gray-600 rounded p-2 text-sm font-medium bg-gray-700 text-white focus:outline-none focus:border-white"
+                    className={`border border-gray-600 rounded p-2 text-sm font-medium bg-gray-700 text-white focus:outline-none focus:border-white`}
                       placeholder={`Lesson ${index + 1} Title`}
                       required
                     />
                     <textarea
                       value={lesson.description}
                       onChange={(e) => handleLessonDescriptionChange(index, e.target.value)}
-                      className="border border-gray-600 rounded p-2 text-sm bg-gray-700 text-white focus:outline-none focus:border-white"
+                    className={`border border-gray-600 rounded p-2 text-sm bg-gray-700 text-white focus:outline-none focus:border-white`}
                       placeholder={`Lesson ${index + 1} Description`}
                       rows={3}
                       required
                     />
-                    {status !== 'Published' && (
-                      <div className="flex justify-between items-center mt-2">
-                        <div className="flex gap-2">
+                    <div className="flex justify-between items-center mt-2">
+                      <div className="flex gap-2">
+                        {(status !== 'Published' || index >= initialLessonCount) && (
+                          <>
                           <button
                             type="button"
                             onClick={() => handleMoveLesson(index, 'up')}
-                            disabled={index === 0}
+                              disabled={status === 'Published' ? index <= initialLessonCount : index === 0}
                             className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
                           >
                             Up
@@ -404,11 +461,15 @@ export default function EditCoursePage() {
                           >
                             Down
                           </button>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
+                          </>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {(status !== 'Published' || index >= initialLessonCount) && (
                           <CldUploadWidget
+                            options={{ resourceType: 'video' }}
                             uploadPreset="next_js_cloudinary"
-                            onSuccess={(result: any) => handleLessonVideoUpload(index, result.info.secure_url, result.info.duration)}
+                            onSuccess={(result: any) => handleLessonVideoUpload(index, result.info.secure_url, result.info.original_filename, result.info.duration)}
                           >
                             {({ open }) => (
                               <button type="button" onClick={() => open()} className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition">
@@ -416,9 +477,9 @@ export default function EditCoursePage() {
                               </button>
                             )}
                           </CldUploadWidget>
-                        </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                     {lesson.url && (
                       <div className="flex justify-between items-center mt-1">
                         <p className="text-xs text-green-400 truncate w-3/4">Video: {lesson.url}</p>
@@ -433,7 +494,18 @@ export default function EditCoursePage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="font-semibold">Enrolled Students ({students.length})</label>
+          <div className="flex justify-between items-center">
+            <label className="font-semibold">Enrolled Students ({students.length})</label>
+            {status === 'Published' && students.length > 0 && (
+              <button
+                onClick={handleExportCSV}
+                className="px-3 py-1 text-sm bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition"
+                type="button"
+              >
+                Export to CSV
+              </button>
+            )}
+          </div>
           <div className="bg-gray-800 rounded p-4 border border-gray-600">
             {students.length === 0 ? (
                <p className="text-gray-400">No students are currently enrolled in this course.</p>
@@ -464,7 +536,7 @@ export default function EditCoursePage() {
         </div>
 
         <div className="flex flex-wrap gap-4">
-          {status !== 'Published' && (
+          {status !== 'Published' ? (
             <>
               <button 
                 onClick={() => handleUpdate('Published')}
@@ -479,6 +551,13 @@ export default function EditCoursePage() {
                 Save Draft
               </button>
             </>
+          ) : (
+            <button 
+              onClick={() => handleUpdate('Published', true)}
+              className="px-6 py-2 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition"
+            >
+              Save Changes
+            </button>
           )}
 
           <button 
@@ -501,8 +580,8 @@ export default function EditCoursePage() {
 
         {message && (
           <div
-            className={`text-sm mt-4 p-3 rounded text-center font-medium ${
-              messageType === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+            className={`text-sm mt-4 p-3 rounded text-center font-medium shadow-sm ${
+              messageType === 'success' ? 'bg-green-900/50 border border-green-500 text-green-200' : 'bg-red-900/50 border border-red-500 text-red-200'
             }`}
           >
             {message}

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { auth, db } from '../../lib/ClientApp'
 import { onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
-import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, documentId } from 'firebase/firestore'
 import { CldUploadWidget } from 'next-cloudinary'
 
 export default function AccountPageUser() {
@@ -35,9 +35,30 @@ export default function AccountPageUser() {
                         setUsername(user.displayName || data.username || '')
                         setPhotoUrl(user.photoURL || data.profilePicture || '')
                         
-                        const purchasedCount = data.purchasedCourses?.length || 0
-                        const completedCount = data.completedCourses?.length || 0
+                        const purchasedCourseIds = data.purchasedCourses || []
+                        const courseProgress = data.courseProgress || {}
+                        const purchasedCount = purchasedCourseIds.length
                         setOwnedCoursesCount(purchasedCount)
+                        
+                        let completedCount = 0
+                        if (purchasedCount > 0) {
+                            const chunkSize = 10
+                            for (let i = 0; i < purchasedCourseIds.length; i += chunkSize) {
+                                const chunk = purchasedCourseIds.slice(i, i + chunkSize)
+                                const q = query(collection(db, 'courses'), where(documentId(), 'in', chunk))
+                                const querySnapshot = await getDocs(q)
+                                querySnapshot.forEach((courseDoc) => {
+                                    const courseData = courseDoc.data()
+                                    const watchedCount = courseProgress[courseDoc.id]?.length || 0
+                                    const lessons = courseData.lessons || courseData.videoUrls || []
+                                    const totalVideos = lessons.length
+                                    if (totalVideos > 0 && watchedCount >= totalVideos) {
+                                        completedCount++
+                                    }
+                                })
+                            }
+                        }
+
                         setCompletedCoursesCount(completedCount)
                         setInProgressCoursesCount(Math.max(0, purchasedCount - completedCount))
                     } else {

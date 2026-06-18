@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { db, auth } from '../../../../lib/ClientApp'
-import { doc, getDoc, collection, getDocs, query, where, orderBy, addDoc, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore'
+import { doc, getDoc, collection, getDocs, query, where, orderBy, addDoc, serverTimestamp, setDoc, deleteDoc, updateDoc } from 'firebase/firestore'
 
 interface ForumData {
   id: string
@@ -25,6 +25,7 @@ interface Comment {
   createdAt: Date
   likes: number
   liked: boolean
+  edited?: boolean
 }
 
 export default function CreatorViewForumPage() {
@@ -40,6 +41,12 @@ export default function CreatorViewForumPage() {
   const [sortBy, setSortBy] = useState<'recent' | 'liked'>('recent')
   const [submitting, setSubmitting] = useState(false)
   const [liking, setLiking] = useState<Record<string, boolean>>({})
+  const [commentError, setCommentError] = useState<string | null>(null)
+  const [commentSuccess, setCommentSuccess] = useState<string | null>(null)
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editCommentText, setEditCommentText] = useState('')
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
     const fetchForumAndComments = async () => {
@@ -129,6 +136,7 @@ export default function CreatorViewForumPage() {
               createdAt: commentData.createdAt?.toDate() || new Date(),
               likes: commentData.likes || 0,
               liked,
+              edited: commentData.edited || false,
             } as Comment
           })
         )
@@ -150,11 +158,13 @@ export default function CreatorViewForumPage() {
 
     const uid = auth.currentUser?.uid
     if (!uid) {
-      alert('Please sign in to comment')
+      setCommentError('Please sign in to comment')
       return
     }
 
     setSubmitting(true)
+    setCommentError(null)
+    setCommentSuccess(null)
     try {
       const userDocRef = await getDoc(doc(db, 'users', uid))
       const userName = userDocRef.exists() ? (userDocRef.data().username || 'Anonymous') : 'Anonymous'
@@ -182,8 +192,10 @@ export default function CreatorViewForumPage() {
       ])
 
       setNewComment('')
+      setCommentSuccess('Comment posted successfully!')
+      setTimeout(() => setCommentSuccess(null), 3000)
     } catch (err: any) {
-      alert('Failed to add comment: ' + err.message)
+      setCommentError('Failed to add comment: ' + err.message)
     } finally {
       setSubmitting(false)
     }
@@ -225,17 +237,42 @@ export default function CreatorViewForumPage() {
     }
   }
 
-  const handleDeleteForum = async () => {
-    if (!forumId) return
-    if (!window.confirm('Are you sure you want to delete this forum? This action cannot be undone.')) {
-      return
+  const handleSaveEditComment = async (commentId: string) => {
+    if (!forumId || !editCommentText.trim()) return
+    setEditSubmitting(true)
+    try {
+      await updateDoc(doc(db, 'forums', forumId as string, 'comments', commentId), {
+        text: editCommentText,
+        edited: true,
+      })
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, text: editCommentText, edited: true } : c))
+      )
+      setEditingCommentId(null)
+      setEditCommentText('')
+      setCommentSuccess('Comment edited.')
+      setTimeout(() => setCommentSuccess(null), 1000)
+    } catch (err: any) {
+      setCommentError('Failed to update comment: ' + err.message)
+    } finally {
+      setEditSubmitting(false)
     }
-    
+  }
+
+  const handleDeleteForum = () => {
+    if (!forumId) return
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDeleteForum = async () => {
+    if (!forumId) return
     try {
       await deleteDoc(doc(db, 'forums', forumId as string))
       router.push('/creator-main-page/forums')
     } catch (err: any) {
-      alert('Failed to delete forum: ' + err.message)
+      setCommentError('Failed to delete forum: ' + err.message)
+    } finally {
+      setShowDeleteConfirm(false)
     }
   }
 
@@ -323,6 +360,16 @@ export default function CreatorViewForumPage() {
             >
               {submitting ? 'Posting...' : 'Post Comment'}
             </button>
+            {commentError && (
+              <div className="bg-red-900/50 border border-red-500 text-red-200 text-sm p-3 rounded mt-4 text-center font-medium shadow-sm">
+                {commentError}
+              </div>
+            )}
+            {commentSuccess && (
+              <div className="bg-green-900/50 border border-green-500 text-green-200 text-sm p-3 rounded mt-4 text-center font-medium shadow-sm">
+                {commentSuccess}
+              </div>
+            )}
           </form>
 
           <div className="mb-4 flex gap-4">
@@ -347,10 +394,51 @@ export default function CreatorViewForumPage() {
               sortedComments.map((comment) => (
                   <div key={comment.id} className="bg-gray-800 border border-gray-600 rounded-lg p-4">
                   <p className="text-sm text-gray-300 mb-2 font-semibold">{comment.userName}</p>
-                  <p className="text-white mb-3">{comment.text}</p>
+                  {editingCommentId === comment.id ? (
+                    <div className="mb-3 flex flex-col gap-2">
+                      <textarea
+                        value={editCommentText}
+                        onChange={(e) => setEditCommentText(e.target.value)}
+                        className="w-full p-2 border border-gray-600 rounded bg-gray-700 text-white text-sm"
+                        rows={2}
+                      ></textarea>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSaveEditComment(comment.id)}
+                          disabled={editSubmitting || !editCommentText.trim() || editCommentText === comment.text}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded disabled:opacity-50"
+                        >
+                          {editSubmitting ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingCommentId(null)
+                            setEditCommentText('')
+                          }}
+                          disabled={editSubmitting}
+                          className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs font-semibold rounded disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-white mb-3">{comment.text}</p>
+                  )}
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-300">{comment.createdAt.toLocaleDateString()} {comment.createdAt.toLocaleTimeString()}</span>
+                    <span className="text-gray-300">{comment.createdAt.toLocaleDateString()} {comment.createdAt.toLocaleTimeString()} {comment.edited && <span className="italic text-gray-500 ml-1">(edited)</span>}</span>
                     <div className="flex items-center gap-3">
+                      {comment.userId === auth.currentUser?.uid && (
+                        <button
+                          onClick={() => {
+                            setEditingCommentId(comment.id)
+                            setEditCommentText(comment.text)
+                          }}
+                          className="text-blue-400 hover:text-blue-300 font-semibold transition"
+                        >
+                          Edit
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteComment(comment.id)}
                         className="text-red-400 hover:text-red-300 font-semibold transition"
@@ -378,6 +466,29 @@ export default function CreatorViewForumPage() {
           </div>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 p-6 rounded-lg max-w-sm w-full text-center border border-gray-600 shadow-xl">
+            <h2 className="text-xl font-bold mb-4 text-white">Delete Forum?</h2>
+            <p className="mb-6 text-gray-300">Are you sure you want to delete this forum? This action cannot be undone.</p>
+            <div className="flex gap-4 justify-center">
+              <button 
+                onClick={() => setShowDeleteConfirm(false)} 
+                className="px-4 py-2 border border-gray-500 rounded text-white hover:bg-gray-700 transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteForum} 
+                className="px-4 py-2 bg-red-600 text-white font-semibold rounded hover:bg-red-700 transition"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

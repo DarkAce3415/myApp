@@ -16,6 +16,7 @@ interface Forum {
   liked?: boolean
   isCreator?: boolean
   linkedCourseId?: string
+  hasAccess?: boolean
 }
 
 export default function UserForumsPage() {
@@ -28,6 +29,8 @@ export default function UserForumsPage() {
   const [use7Day, setUse7Day] = useState<boolean>(true)
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [liking, setLiking] = useState<Record<string, boolean>>({})
+  const [showSplash, setShowSplash] = useState(false)
+  const [deniedCourseId, setDeniedCourseId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchTopicsOnly = async () => {
@@ -62,7 +65,25 @@ export default function UserForumsPage() {
             const totalLikes = likesAllSnapshot.size
 
             let liked = false
+            let hasAccess = true
             const uid = auth.currentUser?.uid
+
+            if (data.linkedCourseId && uid) {
+              hasAccess = false
+              if (data.userId === uid || data.creatorId === uid) {
+                hasAccess = true
+              } else {
+                const userDoc = await getDoc(doc(db, 'users', uid))
+                if (userDoc.exists()) {
+                  const userData = userDoc.data()
+                  const purchasedCourses = userData.purchasedCourses || []
+                  if (purchasedCourses.includes(data.linkedCourseId)) {
+                    hasAccess = true
+                  }
+                }
+              }
+            }
+
             if (uid) {
               const likedDoc = await getDoc(doc(db, 'forums', id, 'likes', uid))
               liked = likedDoc.exists()
@@ -78,6 +99,7 @@ export default function UserForumsPage() {
               liked,
               isCreator: data.isCreator || false,
               linkedCourseId: data.linkedCourseId || null,
+              hasAccess,
             } as Forum
           })
         )
@@ -113,6 +135,13 @@ export default function UserForumsPage() {
     if (!uid) {
       alert('Please sign in to like forums.')
       return
+    }
+
+    const forumTarget = forums.find(f => f.id === forumId);
+    if (forumTarget && forumTarget.hasAccess === false) {
+      setShowSplash(true);
+      setDeniedCourseId(forumTarget.linkedCourseId || null);
+      return;
     }
 
     setLiking((p) => ({ ...p, [forumId]: true }))
@@ -165,8 +194,12 @@ export default function UserForumsPage() {
           <h1 className="text-3xl font-bold">Community Forums</h1>
           <div className="flex items-center gap-4">
             <input type="text" placeholder="Search by title..." value={searchQuery} onChange={handleSearchChange} className="border rounded p-1" />
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={use7Day} onChange={handleToggle7Day} />
+            <label className="flex items-center gap-2 cursor-pointer">
+              <div className="relative">
+                <input type="checkbox" className="sr-only" checked={use7Day} onChange={handleToggle7Day} />
+                <div className={`block w-10 h-6 rounded-full transition ${use7Day ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+                <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform ${use7Day ? 'translate-x-4' : ''}`}></div>
+              </div>
               <span className="text-sm text-black">Use 7-day ranking</span>
             </label>
             <div>
@@ -194,11 +227,18 @@ export default function UserForumsPage() {
         ) : (
           <div className="flex flex-col gap-4">
             {filtered.map((forum) => (
-              <div key={forum.id} className="border border-black rounded-lg p-6 shadow-sm hover:shadow-md transition cursor-pointer bg-white hover:bg-gray-50">
+              <div key={forum.id} className={`border border-black rounded-lg p-6 shadow-sm hover:shadow-md transition cursor-pointer bg-white hover:bg-gray-50 ${forum.hasAccess === false ? 'opacity-50 grayscale' : ''}`}>
                 <div className="flex justify-between items-start gap-4">
                   <Link
                     href={`/user/forums/view-forum/${forum.id}`}
                     className="flex-1"
+                    onClick={(e) => {
+                      if (forum.hasAccess === false) {
+                        e.preventDefault();
+                        setShowSplash(true);
+                        setDeniedCourseId(forum.linkedCourseId || null);
+                      }
+                    }}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <h2 className="text-2xl font-semibold text-black hover:text-black">{forum.title}</h2>
@@ -210,15 +250,15 @@ export default function UserForumsPage() {
                       )}
                     </div>
                     <div className="border-t border-gray-200 pt-3">
-                      <p className="text-black">{forum.description}</p>
+                      <p className="text-black">{forum.hasAccess === false ? <span className="italic text-gray-500">Description hidden. You do not have access to the linked course.</span> : forum.description}</p>
                     </div>
                   </Link>
 
                   <div className="flex flex-col items-end gap-2">
                     <button
                       onClick={() => handleToggleLike(forum.id, !!forum.liked)}
-                      disabled={!!liking[forum.id]}
-                      className={`px-3 py-1 rounded ${forum.liked ? 'bg-blue-600 text-white' : 'bg-gray-100 text-black'} ${liking[forum.id] ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                      disabled={!!liking[forum.id] || forum.hasAccess === false}
+                      className={`px-3 py-1 rounded ${forum.liked ? 'bg-blue-600 text-white' : 'bg-gray-100 text-black'} ${(liking[forum.id] || forum.hasAccess === false) ? 'opacity-60 cursor-not-allowed' : ''}`}>
                       {liking[forum.id] ? (
                         <span className="inline-flex items-center gap-2">
                           <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -235,6 +275,31 @@ export default function UserForumsPage() {
           </div>
         )}
       </div>
+
+      {showSplash && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg max-w-sm w-full text-center border border-black shadow-xl">
+            <h2 className="text-xl font-bold mb-4 text-black">Access Denied</h2>
+            <p className="italic text-gray-500 mb-6">You do not have access to the linked course.</p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => { setShowSplash(false); setDeniedCourseId(null); }}
+                className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 transition"
+              >
+                Close
+              </button>
+              {deniedCourseId && (
+                <button
+                  onClick={() => router.push(`/user/view-course/${deniedCourseId}`)}
+                  className="px-4 py-2 bg-black text-white font-semibold rounded hover:opacity-90 transition"
+                >
+                  View Course
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
